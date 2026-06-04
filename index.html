@@ -886,7 +886,7 @@ function showLock(){
   const btn=document.getElementById('lockBtn');
   const err=document.getElementById('lockErr');
   function tryUnlock(){
-    if(inp.value===TEAM_PASSWORD){
+    if(inp.value.trim().toLowerCase()===TEAM_PASSWORD.trim().toLowerCase()){
       localStorage.setItem('viper_unlocked','1');
       startApp();
     }else{
