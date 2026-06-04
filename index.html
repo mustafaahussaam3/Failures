@@ -333,6 +333,32 @@ textarea.fin.code{white-space:pre;overflow-wrap:normal;overflow-x:auto;}
 .def-import{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
 .def-import input[type=file]{display:none;}
 .file-label{flex:1;text-align:center;padding:13px;border-radius:11px;border:1px solid var(--line2);background:var(--panel2);color:var(--txt);font-family:var(--mono);font-size:12px;font-weight:700;cursor:pointer;}
+
+
+/* ---- Mobile/UI fixes added ---- */
+.tabs{overflow-x:auto;scrollbar-width:none;top:calc(var(--sat) + 72px);}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{min-width:86px;white-space:nowrap;}
+main{overflow-x:hidden;}
+.add-row{align-items:center;}
+.add-row select,.add-row input{min-width:0;}
+@media(max-width:520px){.app{max-width:100%;}.logo{font-size:14px;letter-spacing:1px;min-width:0;}.logo .tag{display:none;}header{padding-left:12px;padding-right:12px;}.tabs{position:sticky;top:calc(var(--sat) + 78px);}.tab{flex:0 0 auto;min-width:82px;padding:11px 10px;font-size:10px;}main{padding-left:10px;padding-right:10px;}.ctrlgrid{grid-template-columns:1fr;}.statgrid{grid-template-columns:1fr 1fr;}.analysis-top{align-items:flex-start;gap:10px;padding:12px;}.donut svg{width:96px;height:96px;}.add-row[style]{flex-wrap:wrap;}}
+/* ---- Better define.h editor GUI ---- */
+.define-panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:0 12px 28px rgba(0,0,0,.18);}
+.define-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--panel2),var(--panel));position:sticky;top:0;z-index:2;}
+.define-toolbar .btn{flex:0 0 auto;padding:10px 12px;font-size:10.5px;}
+.define-toolbar .spacer{flex:1;}
+.define-search{min-width:150px;flex:1;background:var(--bg);border:1px solid var(--line2);border-radius:9px;padding:9px 10px;color:var(--txt);font-family:var(--mono);font-size:11px;outline:none;}
+.define-editor-wrap{position:relative;display:grid;grid-template-columns:44px 1fr;max-height:64vh;min-height:430px;background:#071019;overflow:hidden;}
+.define-lines{padding:12px 8px;background:#050a10;border-right:1px solid var(--line);color:#435468;font-family:var(--mono);font-size:11px;line-height:1.55;text-align:right;overflow:hidden;user-select:none;white-space:pre;}
+.define-editor{width:100%;height:100%;min-height:430px;resize:vertical;border:0;outline:none;background:#071019;color:#c9def2;font-family:var(--mono);font-size:12px;line-height:1.55;padding:12px 14px;white-space:pre;overflow:auto;tab-size:4;}
+.define-editor:focus{box-shadow:inset 0 0 0 1px rgba(255,176,0,.35);}
+.define-status{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:9px 12px;border-top:1px solid var(--line);background:var(--bg2);font-family:var(--mono);font-size:10px;color:var(--txt3);}
+.define-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
+.define-kpi{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:10px 12px;}.define-kpi b{display:block;font-family:var(--mono);font-size:18px;color:var(--amber);line-height:1;}.define-kpi span{display:block;font-family:var(--mono);font-size:9px;color:var(--txt3);margin-top:5px;text-transform:uppercase;letter-spacing:.5px;}
+.diag-grid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px;}.diag-row{display:flex;gap:8px;align-items:flex-start;padding:10px;border:1px solid var(--line);background:var(--panel);border-radius:10px;font-size:12px;line-height:1.45;}.diag-row b{color:var(--txt);}.diag-row .ok{color:var(--green);font-family:var(--mono);}.diag-row .bad{color:var(--red);font-family:var(--mono);}.diag-code{display:block;margin-top:8px;background:#071019;border:1px solid var(--line);border-radius:8px;padding:10px;white-space:pre-wrap;font-family:var(--mono);font-size:10.5px;color:#c9def2;overflow:auto;}
+@media(max-width:520px){.define-kpis{grid-template-columns:1fr 1fr}.define-editor-wrap{grid-template-columns:34px 1fr;min-height:58vh}.define-lines{font-size:10px;padding-left:4px;padding-right:5px}.define-editor{font-size:11px;min-height:58vh;padding:10px}.define-toolbar{gap:6px}.define-toolbar .btn{padding:9px 10px}.define-search{order:9;flex:1 0 100%;}}
+
 </style>
 </head>
 <body>
@@ -462,40 +488,45 @@ function lsSave(key,v){localStorage.setItem(key,JSON.stringify(v));}
 async function initData(){
   if(CONFIGURED){
     try{
+      CONNECTION_STAGE='initializing Firebase app';localStorage.setItem('viper_conn_stage',CONNECTION_STAGE);
       const app=initializeApp(firebaseConfig);
       DB=getFirestore(app);
       const auth=getAuth(app);
+      CONNECTION_STAGE='anonymous authentication';localStorage.setItem('viper_conn_stage',CONNECTION_STAGE);
       // sign in anonymously so security rules can require auth
       await signInAnonymously(auth);
       await new Promise(res=>{const off=onAuthStateChanged(auth,u=>{if(u){off();res();}});});
+      CONNECTION_STAGE='Firestore collections';localStorage.setItem('viper_conn_stage',CONNECTION_STAGE);
       failuresCol=collection(DB,'failures');
       tasksCol=collection(DB,'tasks');
       activityCol=collection(DB,'activity');
       metaCol=collection(DB,'meta');
       // seed if empty
+      CONNECTION_STAGE='reading failures collection';localStorage.setItem('viper_conn_stage',CONNECTION_STAGE);
       const snap=await getDocs(failuresCol);
-      if(snap.empty){
+      if(snap.empty){CONNECTION_STAGE='seeding Firestore';localStorage.setItem('viper_conn_stage',CONNECTION_STAGE);
         await seedFirestore();
       }
+      clearConnError();
       onSnapshot(failuresCol,s=>{
         failures=s.docs.map(d=>({_docid:d.id,...d.data()}));
         sortFailures();
         setSync(true);render();
-      },err=>{setSync(false);console.error(err);});
+      },err=>{console.error(err);captureError('live listener: failures',err);useLocal=true;setSync(false);loadLocal();});
       onSnapshot(tasksCol,s=>{
         tasks=s.docs.map(d=>({_docid:d.id,...d.data()}));
         render();
-      });
+      },err=>{console.error(err);captureError('live listener: tasks',err);setSync(false);});
       onSnapshot(activityCol,s=>{
         activity=s.docs.map(d=>({_docid:d.id,...d.data()})).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,100);
         updateNotifBadge();
         if(view==='activity')render();
-      });
+      },err=>{console.error(err);captureError('live listener: activity',err);setSync(false);});
       onSnapshot(doc(metaCol,'defineFile'),d=>{
         if(d.exists())defineText=d.data().text||'';
         if(view==='define')render();
-      });
-    }catch(e){console.error(e);LAST_ERROR=(e&&e.code?e.code+' — ':'')+(e&&e.message?e.message:String(e));useLocal=true;setSync(false);loadLocal();}
+      },err=>{console.error(err);captureError('live listener: define.h',err);setSync(false);});
+    }catch(e){console.error(e);captureError(CONNECTION_STAGE||'Firebase startup',e);useLocal=true;setSync(false);loadLocal();}
   }else{
     useLocal=true;setSync(false);loadLocal();
   }
@@ -629,7 +660,10 @@ function setSync(ok){
   else if(ok){d.className='dot on';t.textContent='live · synced';}
   else{d.className='dot off';t.textContent='offline';}
 }
-let LAST_ERROR='';
+let LAST_ERROR=localStorage.getItem('viper_last_error')||'';
+let CONNECTION_STAGE=localStorage.getItem('viper_conn_stage')||'not started';
+function captureError(stage,e){CONNECTION_STAGE=stage;LAST_ERROR=(e&&e.code?e.code+' — ':'')+(e&&e.message?e.message:String(e));localStorage.setItem('viper_conn_stage',CONNECTION_STAGE);localStorage.setItem('viper_last_error',LAST_ERROR);}
+function clearConnError(){LAST_ERROR='';CONNECTION_STAGE='connected';localStorage.removeItem('viper_last_error');localStorage.setItem('viper_conn_stage','connected');}
 
 /* ---------- PROGRESS ---------- */
 function counts(){
@@ -1145,53 +1179,52 @@ function renderStats(){
 }
 
 /* ---------- DEFINE FILE VIEW ---------- */
+function defineStats(txt){
+  txt=txt||DEFAULT_DEFINE;
+  const lines=txt.split('\n').length;
+  const defs=(txt.match(/^\s*#define\s+/gm)||[]).length;
+  const assigns=(txt.match(/^\s*\/\/\s*(FAILURE|TASK)\s+/gm)||[]).length;
+  return {lines,defs,assigns,chars:txt.length};
+}
+function updateDefineLineNumbers(){
+  const ed=$('#defEditor'), ln=$('#defLines'); if(!ed||!ln)return;
+  const n=(ed.value||'').split('\n').length;
+  ln.textContent=Array.from({length:n},(_,i)=>i+1).join('\n');
+  ln.scrollTop=ed.scrollTop;
+  const st=defineStats(ed.value);
+  const s=$('#defLiveStats'); if(s)s.textContent=`${st.lines} lines · ${st.defs} #defines · ${st.chars} chars`;
+}
+async function pasteIntoDefineEditor(){
+  const ed=$('#defEditor'); if(!ed)return;
+  try{
+    const txt=await navigator.clipboard.readText();
+    if(!txt){toast('Clipboard is empty');return;}
+    const start=ed.selectionStart||0,end=ed.selectionEnd||0;
+    ed.value=ed.value.slice(0,start)+txt+ed.value.slice(end);
+    ed.focus(); ed.selectionStart=ed.selectionEnd=start+txt.length;
+    updateDefineLineNumbers(); toast('Pasted ✓');
+  }catch(e){toast('Browser blocked paste. Use Ctrl+V');}
+}
 function renderDefine(){
-  const lines=(defineText||'').split('\n').length;
-  let html=`<div class="banner"><h3>SHARED DEFINE FILE</h3>
-    <p>The team's <b>define.h</b>. Edit and save — everyone gets the update live. Use this as the single source of truth for CAN IDs.</p></div>`;
-  html+=`<div class="def-import">
-    <label class="file-label" for="defUpload">⬆ IMPORT define.h INTO APP</label>
-    <input type="file" id="defUpload" accept=".h,.txt,text/plain">
-  </div>`;
-  html+=`<div class="define-actions">
-    <button class="btn btn-edit" id="defCopy">⧉ COPY</button>
-    <button class="btn btn-edit" id="defDownload">⬇ DOWNLOAD .h</button>
-    <button class="btn btn-save" id="defEdit">✎ EDIT</button>
-  </div>`;
-  html+=`<div class="define-meta">${lines} lines</div>`;
-  html+=`<pre class="define-view" id="defView">${esc(defineText||DEFAULT_DEFINE)}</pre>`;
+  const current=defineText||DEFAULT_DEFINE;
+  const st=defineStats(current);
+  let html=`<div class="banner"><h3>SHARED DEFINE FILE</h3><p>Edit, paste, import, copy, and download <b>define.h</b> from one clean code panel. When the database is live, this file syncs to everyone.</p></div>`;
+  html+=`<div class="define-kpis"><div class="define-kpi"><b>${st.lines}</b><span>Lines</span></div><div class="define-kpi"><b>${st.defs}</b><span>#defines</span></div><div class="define-kpi"><b>${st.assigns}</b><span>Assignments</span></div></div>`;
+  html+=`<div class="define-panel"><div class="define-toolbar"><label class="btn btn-edit" for="defUpload">⬆ IMPORT</label><input type="file" id="defUpload" accept=".h,.txt,text/plain" style="display:none"><button class="btn btn-edit" id="defPaste">📋 PASTE</button><button class="btn btn-edit" id="defCopy">⧉ COPY</button><button class="btn btn-edit" id="defDownload">⬇ DOWNLOAD</button><span class="spacer"></span><input class="define-search" id="defFind" placeholder="Find in define.h…"><button class="btn btn-save" id="defSavePage">SAVE</button></div><div class="define-editor-wrap"><pre class="define-lines" id="defLines"></pre><textarea class="define-editor" id="defEditor" spellcheck="false" autocapitalize="off" autocomplete="off">${esc(current)}</textarea></div><div class="define-status"><span id="defLiveStats">${st.lines} lines · ${st.defs} #defines · ${st.chars} chars</span><span>${useLocal?'LOCAL COPY':'LIVE DATABASE'}</span></div></div>`;
   main.innerHTML=html;
-  $('#defCopy').onclick=()=>{navigator.clipboard.writeText(defineText||DEFAULT_DEFINE).then(()=>toast('Copied ✓')).catch(()=>toast('Copy failed'));};
-  $('#defDownload').onclick=()=>{
-    const blob=new Blob([defineText||DEFAULT_DEFINE],{type:'text/plain'});
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='define.h';a.click();};
-  $('#defEdit').onclick=()=>openDefineEdit();
-  $('#defUpload').onchange=async(e)=>{
-    const file=e.target.files&&e.target.files[0]; if(!file)return;
-    const txt=await file.text();
-    await saveDefine(txt);
-    await refreshDefineAssignments();
-    toast('define.h imported ✓'); renderDefine();
-  };
+  const ed=$('#defEditor');
+  updateDefineLineNumbers();
+  ed.addEventListener('input',updateDefineLineNumbers);
+  ed.addEventListener('scroll',()=>{const ln=$('#defLines'); if(ln)ln.scrollTop=ed.scrollTop;});
+  ed.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const s=ed.selectionStart,t=ed.selectionEnd;ed.value=ed.value.slice(0,s)+'    '+ed.value.slice(t);ed.selectionStart=ed.selectionEnd=s+4;updateDefineLineNumbers();} if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();$('#defSavePage').click();}});
+  $('#defCopy').onclick=()=>{navigator.clipboard.writeText(ed.value).then(()=>toast('Copied ✓')).catch(()=>toast('Copy failed'));};
+  $('#defPaste').onclick=pasteIntoDefineEditor;
+  $('#defDownload').onclick=()=>{const blob=new Blob([ed.value],{type:'text/plain'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='define.h';a.click();URL.revokeObjectURL(a.href);};
+  $('#defSavePage').onclick=async()=>{if(!myName){promptName();return;} await saveDefine(ed.value); await refreshDefineAssignments(); toast('define.h saved ✓'); renderDefine();};
+  $('#defUpload').onchange=async(e)=>{const file=e.target.files&&e.target.files[0]; if(!file)return; const txt=await file.text(); ed.value=txt; updateDefineLineNumbers(); await saveDefine(txt); await refreshDefineAssignments(); toast('define.h imported and saved ✓'); renderDefine();};
+  $('#defFind').addEventListener('keydown',e=>{if(e.key==='Enter'){const q=e.currentTarget.value; if(!q)return; const idx=ed.value.toLowerCase().indexOf(q.toLowerCase(), Math.max(0,ed.selectionEnd||0)); const idx2=idx>=0?idx:ed.value.toLowerCase().indexOf(q.toLowerCase()); if(idx2>=0){ed.focus(); ed.selectionStart=idx2; ed.selectionEnd=idx2+q.length; const before=ed.value.slice(0,idx2).split('\n').length; ed.scrollTop=Math.max(0,(before-4)*18); updateDefineLineNumbers();} else toast('Not found');}});
 }
-function openDefineEdit(){
-  if(!myName){promptName();return;}
-  $('#sheetContent').innerHTML=`
-    <div class="sh-head"><div class="top">
-      <span class="cid">define.h</span><h2>Edit Define File</h2>
-      <button class="sh-close" id="shClose">✕</button></div></div>
-    <div class="sh-body">
-      <div class="field"><label>Shared define.h (everyone sees changes)</label>
-      <textarea class="fin code" id="defText" style="min-height:50vh;font-family:var(--mono);font-size:12px">${esc(defineText||DEFAULT_DEFINE)}</textarea></div>
-      <div class="sh-actions">
-        <button class="btn btn-cancel" id="shCancel">CANCEL</button>
-        <button class="btn btn-save" id="defSave">SAVE</button>
-      </div>
-    </div>`;
-  $('#overlay').classList.add('open');$('#sheet').classList.add('open');
-  $('#shClose').onclick=closeSheet;$('#shCancel').onclick=closeSheet;
-  $('#defSave').onclick=async()=>{await saveDefine($('#defText').value);closeSheet();toast('Define saved ✓');render();};
-}
+function openDefineEdit(){ renderDefine(); }
 
 /* ---------- ACTIVITY / NOTIFICATIONS VIEW ---------- */
 function timeAgo(ts){
@@ -1258,8 +1291,17 @@ Replace the PASTE_HERE values with your real config keys. Save.<br><br>
   <div class="cfgnote" style="margin-top:14px">
 <b>CONNECTION DIAGNOSTICS</b><br><br>
 Status: <b style="color:${useLocal?'var(--red)':'var(--green)'}">${useLocal?'LOCAL ONLY':'LIVE · SYNCED'}</b><br>
-${useLocal&&LAST_ERROR?`<br>Last error:<br><span style="color:var(--red)">${esc(LAST_ERROR)}</span><br><br>Most common fixes:<br>1. Firebase → Authentication → Sign-in method → enable <b>Anonymous</b>.<br>2. Firebase → Authentication → Settings → Authorized domains → add your <b>github.io</b> domain.`:''}
-${useLocal&&!LAST_ERROR?'<br>No error captured (config may still be PASTE_HERE).':''}
+Project ID: <b>${esc(firebaseConfig.projectId||'missing')}</b><br>
+Stage: <b>${esc(CONNECTION_STAGE||'not started')}</b><br>
+${LAST_ERROR?`<br>Last error:<br><span class="diag-code" style="color:var(--red)">${esc(LAST_ERROR)}</span>`:''}
+<div class="diag-grid"><div class="diag-row"><span class="${CONFIGURED?'ok':'bad'}">${CONFIGURED?'✓':'✕'}</span><div><b>Firebase config</b><br>${CONFIGURED?'Config is present in the file.':'Your config still has PASTE_HERE values.'}</div></div><div class="diag-row"><span class="${useLocal?'bad':'ok'}">${useLocal?'!':'✓'}</span><div><b>Most likely reason</b><br>${useLocal?(LAST_ERROR&&LAST_ERROR.includes('operation-not-allowed')?'Anonymous Authentication is not enabled in Firebase.':LAST_ERROR&&LAST_ERROR.includes('permission-denied')?'Firestore rules are blocking read/write. Use test mode first or rules that allow signed-in users.':LAST_ERROR&&LAST_ERROR.includes('unauthorized-domain')?'Your GitHub Pages domain is not added in Firebase Authentication authorized domains.':'Open browser DevTools Console or Firebase Auth/Firestore settings; the captured error above is the exact reason.'): 'Database connection is working.'}</div></div><div class="diag-row"><span class="ok">→</span><div><b>Recommended Firestore rules for this app</b><span class="diag-code">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}</span></div></div></div>
   </div>
 
   <div class="cfgnote" style="margin-top:14px">
