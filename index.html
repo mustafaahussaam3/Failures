@@ -53,6 +53,9 @@ header{
 .logo .tag{font-family:var(--mono);font-size:9px;color:var(--txt3);
   border:1px solid var(--line2);padding:2px 6px;border-radius:6px;letter-spacing:1px;}
 .sync{margin-left:auto;display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--txt2);}
+.bell{position:relative;margin-left:8px;background:var(--panel);border:1px solid var(--line2);border-radius:9px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;}
+.bell-ic{font-size:15px;filter:grayscale(.2);}
+.notif-badge{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--red);color:#fff;font-family:var(--mono);font-size:10px;font-weight:700;display:none;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--bg);}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--grey);box-shadow:0 0 0 0 rgba(57,217,138,.6);}
 .dot.on{background:var(--green);animation:pulse 2s infinite;}
 .dot.off{background:var(--red);}
@@ -156,6 +159,7 @@ main{flex:1;padding:14px 14px calc(var(--sab) + 90px);}
   max-height:92vh;display:flex;flex-direction:column;
   transform:translateY(100%);transition:transform .32s cubic-bezier(.32,.72,0,1);}
 .sheet.open{transform:translateY(0);}
+.sheet>#sheetContent{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;}
 .grab{width:42px;height:4px;background:var(--line2);border-radius:3px;margin:9px auto 4px;flex:0 0 auto;}
 .sh-head{padding:6px 18px 14px;border-bottom:1px solid var(--line);flex:0 0 auto;}
 .sh-head .top{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
@@ -163,7 +167,7 @@ main{flex:1;padding:14px 14px calc(var(--sab) + 90px);}
 .sh-head h2{margin:0;font-size:19px;font-weight:700;line-height:1.25;flex:1;}
 .sh-close{background:var(--panel);border:1px solid var(--line2);color:var(--txt2);
   width:32px;height:32px;border-radius:9px;font-size:18px;cursor:pointer;flex:0 0 auto;}
-.sh-body{overflow-y:auto;padding:16px 18px calc(var(--sab) + 24px);flex:1;
+.sh-body{overflow-y:auto;padding:16px 18px calc(var(--sab) + 24px);flex:1;min-height:0;
   -webkit-overflow-scrolling:touch;}
 .field{margin-bottom:18px;}
 .field label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:1px;
@@ -214,6 +218,14 @@ textarea.fin{resize:vertical;min-height:80px;line-height:1.5;font-size:13px;}
 .tmeta .pill.sw{color:var(--blue);background:rgba(74,168,255,.1);}
 .tmeta .pill.emb{color:var(--purple);background:rgba(181,140,255,.1);}
 .tmeta .pill.gen{color:var(--txt2);background:var(--panel2);}
+.tmeta .pill.prio{font-weight:700;}
+.tmeta .pill.prio.high{color:var(--red);background:rgba(255,92,92,.12);}
+.tmeta .pill.prio.med{color:var(--amber);background:rgba(255,176,0,.12);}
+.tmeta .pill.prio.low{color:var(--green);background:rgba(57,217,138,.12);}
+.tmeta .pill.assignee{color:var(--txt);background:var(--panel2);border:1px solid var(--line2);}
+.taskcard.prio-high{border-left:3px solid var(--red);}
+.taskcard.prio-med{border-left:3px solid var(--amber);}
+.taskcard.prio-low{border-left:3px solid var(--green);}
 .tdel{background:none;border:none;color:var(--txt3);font-size:15px;cursor:pointer;padding:2px 4px;flex:0 0 auto;}
 
 /* ---- Stats page ---- */
@@ -265,6 +277,45 @@ textarea.fin{resize:vertical;min-height:80px;line-height:1.5;font-size:13px;}
   background:var(--amber);color:#1a1200;font-family:var(--mono);font-weight:700;font-size:13px;
   letter-spacing:1px;cursor:pointer;}
 .lock .lk-err{color:var(--red);font-family:var(--mono);font-size:11px;height:16px;margin-top:12px;}
+
+/* ---- Define file view ---- */
+.define-actions{display:flex;gap:8px;margin-bottom:8px;}
+.define-meta{font-family:var(--mono);font-size:10px;color:var(--txt3);margin-bottom:8px;}
+.define-view{background:#0a0f16;border:1px solid var(--line);border-radius:11px;padding:14px;
+  font-family:var(--mono);font-size:11.5px;line-height:1.5;color:#a8c5e0;overflow-x:auto;
+  white-space:pre;max-height:65vh;overflow-y:auto;-webkit-overflow-scrolling:touch;margin:0;}
+textarea.fin.code{white-space:pre;overflow-wrap:normal;overflow-x:auto;}
+
+/* ---- Activity list ---- */
+.actlist{display:flex;flex-direction:column;gap:8px;}
+.actitem{display:flex;gap:11px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 13px;align-items:flex-start;}
+.actitem.new{border-color:var(--amber-dim);background:rgba(255,176,0,.05);}
+.actitem.new::before{content:'';position:absolute;}
+.acticon{font-size:15px;flex:0 0 auto;width:22px;text-align:center;}
+.actbody{flex:1;min-width:0;}
+.acttext{font-size:13.5px;line-height:1.35;}
+.actmeta{font-family:var(--mono);font-size:10px;color:var(--txt3);margin-top:5px;}
+.actmeta .actby{color:var(--amber);}
+
+/* ---- Drag handle on cards ---- */
+.card.dragging{opacity:.5;border-color:var(--amber);}
+.card.dragover{border-top:2px solid var(--amber);}
+.draghandle{cursor:grab;color:var(--txt3);font-size:15px;flex:0 0 auto;padding:0 2px;touch-action:none;}
+.reorder-hint{font-family:var(--mono);font-size:10px;color:var(--txt3);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.reorder-toggle{background:var(--panel);border:1px solid var(--line2);color:var(--txt2);
+  border-radius:8px;padding:6px 11px;font-family:var(--mono);font-size:10px;cursor:pointer;margin-left:auto;}
+.reorder-toggle.on{border-color:var(--amber);color:var(--amber);}
+
+/* ---- Analysis page ---- */
+.sec-h{font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--txt2);margin:22px 0 12px;}
+.analysis-top{display:flex;gap:16px;align-items:center;background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius);padding:16px;margin-bottom:6px;}
+.donut{flex:0 0 auto;}
+.donut-legend{flex:1;display:flex;flex-direction:column;gap:8px;}
+.donut-legend .leg{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--txt2);}
+.donut-legend .leg b{margin-left:auto;color:var(--txt);font-family:var(--mono);}
+.donut-legend .leg.total{border-top:1px solid var(--line);padding-top:8px;margin-top:2px;color:var(--txt);font-weight:600;}
+.donut-legend .ld{width:11px;height:11px;border-radius:3px;flex:0 0 auto;}
 </style>
 </head>
 <body>
@@ -272,6 +323,7 @@ textarea.fin{resize:vertical;min-height:80px;line-height:1.5;font-size:13px;}
   <header>
     <div class="hrow">
       <div class="logo"><span>⬡</span><b>VIPER</b>&nbsp;FAILURES <span class="tag">F-16 SIM</span></div>
+      <button class="bell" id="bellBtn" title="Activity"><span class="bell-ic">🔔</span><span class="notif-badge" id="notifBadge">0</span></button>
       <div class="sync"><span class="dot" id="syncDot"></span><span id="syncTxt">connecting…</span></div>
     </div>
     <div class="prog">
@@ -283,7 +335,8 @@ textarea.fin{resize:vertical;min-height:80px;line-height:1.5;font-size:13px;}
   <div class="tabs">
     <button class="tab active" data-view="failures"><span class="ic">⚠</span>FAILURES</button>
     <button class="tab" data-view="tasks"><span class="ic">▣</span>TASKS</button>
-    <button class="tab" data-view="stats"><span class="ic">▤</span>STATS</button>
+    <button class="tab" data-view="stats"><span class="ic">▤</span>ANALYSIS</button>
+    <button class="tab" data-view="define"><span class="ic">⌗</span>DEFINE</button>
     <button class="tab" data-view="setup"><span class="ic">⚙</span>SETUP</button>
   </div>
 
@@ -335,11 +388,15 @@ const CONFIGURED = firebaseConfig.apiKey && firebaseConfig.apiKey !== "PASTE_HER
       Everyone on the team types it once to unlock the app.
    ============================================================ */
 const TEAM_PASSWORD = "ariegsa2026";
+const DEFAULT_DEFINE = "#ifndef define_h\n#define define_h\n\n#include <Arduino.h>\n#include <avr/pgmspace.h>\n\n// 0x000\u20130x0FF  \u2192  0 \u2013 255       \u2014 safety-critical, hard real-time\n// 0x100\u20130x3FF  \u2192  256 \u2013 1023    \u2014 control signals\n// 0x400\u20130x5FF  \u2192  1024 \u2013 1535    \u2014 sensor data, telemetry\n// 0x600\u20130x7FF  \u2192  1536 \u2013 2047    \u2014 diagnostics, low-priority status\n\n#define NUMBER_OF_FAILURES_TO_SEND                           2000\n#define CAN_CS_PIN                                             10\n#define CAN_CS_PIN_2                                           53        \n#define CAN_BAUDRATE                                     (500000)\n\n//safety-critical, hard real-time\n#define CAN_ID_TOTAL_FUEL                                       2\n#define UPPER_GAUGES_STACK_ID                                 101\n#define LOWER_GAUGES_STACK_ID                                 105\n#define FUEL_ID                                               102\n#define LIGHTS_ID                                             103\n#define FUEL_FLOW_DATA_ID                                     106\n#define CAUTION_PANEL_ID                                      513\n#define CAUTION_PANEL_ACK_ID                (CAUTION_PANEL_ID + 1)  \n#define CAUTION_PANEL_ACK_BYTE                               0xAA \n\n//failures control ID's\n#define ENGINE_TOTAL_ENG_ALTERANTE_FAILURE                    600   \n#define ENGINE_TOTAL_ENG_ALTERANTE_CORRECTIVE                 601\n#define FLCS_LEF_MALFUNCTION_FAILURE                          602   \n#define FLCS_LEF_MALFUNCTION_CORRECTIVE                       603\n#define ELEC_MAIN_AND_STDBY_GENERATOR_FAILURE                 604   \n#define ELEC_MAIN_AND_STDBY_GENERATOR_CORRECTIVE              605\n#define ELEC_UNCOMMANDED_EPU_OPERATION                        606   \n#define ELEC_UNCOMMANDED_EPU_OPERATION_CORRECTIVE             607\n#define ENGINE_FAULT_CAUTION_LIGHT_FALSE_LUBE_LOW_FAILURE     608   \n#define ENGINE_FAULT_CAUTION_LIGHT_FALSE_LUBE_LOW_CORRECTIVE  609\n#define ENGINE_AUTO_ACCELERATION                              610   \n#define ENGINE_AUTO_ACCELERATION_CORRECTIVE                   611\n#define FLCS_TRIM_MALFUNCTION                                 612   \n#define HYDRAULIC_DUAL_HYDRAULIC_FAILURE                      614   \n#define HYDRAULIC_DUAL_HYDRAULIC_CORRECTIVE                   615\n#define FUEL_LEAK_FAILURE                                     616   \n#define FUEL_LEAK_CORRECTIVE                                  617\n#define ENGINE_FIRE_ACTIAVATED                                618\n#define ENGINE_FIRE_DEACTIVATED                               619\n#define ENGINE_FIRE_CRITICAL_ACTIVATED                        620\n#define ENGINE_FIRE_CRITICAL_DEACTIVATED                      621\n#define ENGINE_ZERO_RPM_INDICATOR_FAILURE                     622\n#define ENGINE_ZERO_RPM_INDICATOR_CORRECTIVE                  623\n#define ELEC_PMG_FAILURE                                      624\n#define ELEC_PMG_CORRECTIVE                                   625\n#define ELEC_OVERHEAT_CAUTION_LIGHT_FAILURE                   626\n#define ELEC_OVERHEAT_CAUTION_LIGHT_CORRECTIVE                627\n\n#define HYDRAULIC_UNDER_1000_CALLBACK                         914\n#define HYDRAULIC_EPU_CALLBACK                                915 \n#define FUEL_QUANTITY_EQUAL_ZERO                              916\n#define FUEL_QUANTITY_LESS_THAN_BINGO                         917\n#define FUEL_QUANTITY_LESS_THAN_BINGO_ACTIVATED               918\n\n//special cases on failures activated\n#define LIGHTS_BUTTONS_ACTIVATED                              945\n#define LIGHTS_BUTTONS_DEACTIVATED                            946\n#define ENGINE_FIRE_OVERHEAT_TEST_ACTIVATED                   947\n#define ENGINE_FIRE_OVERHEAT_TEST_DEACTIVATED                 948\n#define MASTER_CAUTION_ON                                     949\n#define MASTER_CAUTION_OFF                                    950\n\n#define TRIM_UP                                               951\n#define TRIM_DOWN                                             952\n#define TRIM_LEFT                                             953\n#define TRIM_RIGHT                                            954\n#define TRIM_CANCEL                                           955\n                             \n#define CAUTION_400_ON                                        960\n#define MASTER_CAUTION_ON_400                                 961\n#define MASTER_CAUTION_ON_250                                 962\n#define CAUTION_250_ON                                        963\n#define FUEL_QUANTITY_EQUAL_ZERO_ACTIVATED                    964\n#define CAN_ID_DED_BINGO                                      965\n\n#define FUEL_QUANTITY_ID                                      999\n#define RESTART                                              1000\n\n#define MAIN_TASK                                               1\n#define TASK_TIME                                               0\n";
+
 
 /* ---------- STATE ---------- */
-let DB=null, failuresCol=null, tasksCol=null;
+let DB=null, failuresCol=null, tasksCol=null, activityCol=null, metaCol=null;
 let failures = [];          // live array
 let tasks = [];
+let activity = [];          // change log
+let defineText = '';        // shared define.h content
 let view = 'failures';
 let filterCat = 'all';
 let filterStatus = 'all';
@@ -388,6 +445,8 @@ async function initData(){
       await new Promise(res=>{const off=onAuthStateChanged(auth,u=>{if(u){off();res();}});});
       failuresCol=collection(DB,'failures');
       tasksCol=collection(DB,'tasks');
+      activityCol=collection(DB,'activity');
+      metaCol=collection(DB,'meta');
       // seed if empty
       const snap=await getDocs(failuresCol);
       if(snap.empty){
@@ -402,7 +461,16 @@ async function initData(){
         tasks=s.docs.map(d=>({_docid:d.id,...d.data()}));
         render();
       });
-    }catch(e){console.error(e);useLocal=true;setSync(false);loadLocal();}
+      onSnapshot(activityCol,s=>{
+        activity=s.docs.map(d=>({_docid:d.id,...d.data()})).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,100);
+        updateNotifBadge();
+        if(view==='activity')render();
+      });
+      onSnapshot(doc(metaCol,'defineFile'),d=>{
+        if(d.exists())defineText=d.data().text||'';
+        if(view==='define')render();
+      });
+    }catch(e){console.error(e);LAST_ERROR=(e&&e.code?e.code+' — ':'')+(e&&e.message?e.message:String(e));useLocal=true;setSync(false);loadLocal();}
   }else{
     useLocal=true;setSync(false);loadLocal();
   }
@@ -412,18 +480,26 @@ function loadLocal(){
   failures=lsLoad('viper_failures',null);
   if(!failures){failures=SEED_DATA.map(x=>({...x}));lsSave('viper_failures',failures);}
   tasks=lsLoad('viper_tasks',[]);
-  sortFailures();render();
+  activity=lsLoad('viper_activity',[]);
+  defineText=lsLoad('viper_define','')||DEFAULT_DEFINE;
+  sortFailures();updateNotifBadge();render();
 }
-function persistLocal(){lsSave('viper_failures',failures);lsSave('viper_tasks',tasks);}
+function persistLocal(){lsSave('viper_failures',failures);lsSave('viper_tasks',tasks);lsSave('viper_activity',activity);lsSave('viper_define',defineText);}
 
 async function seedFirestore(){
   const batch=writeBatch(DB);
-  SEED_DATA.forEach(f=>{batch.set(doc(failuresCol,f.id),f);});
+  SEED_DATA.forEach((f,i)=>{batch.set(doc(failuresCol,f.id),{...f,order:i});});
   await batch.commit();
+  try{await setDoc(doc(metaCol,'defineFile'),{text:DEFAULT_DEFINE,updatedBy:'system',updatedAt:Date.now()});}catch(e){console.error(e);}
 }
 
 function sortFailures(){
+  const hasOrder=failures.some(f=>typeof f.order==='number');
   failures.sort((a,b)=>{
+    if(hasOrder){
+      const oa=typeof a.order==='number'?a.order:9999, ob=typeof b.order==='number'?b.order:9999;
+      if(oa!==ob)return oa-ob;
+    }
     const pa=a.id.split('.').map(Number),pb=b.id.split('.').map(Number);
     return (pa[0]-pb[0])||((pa[1]||0)-(pb[1]||0));
   });
@@ -431,18 +507,36 @@ function sortFailures(){
 
 /* writes */
 async function updateFailure(id,patch){
-  const f=failures.find(x=>x.id===id);if(f)Object.assign(f,patch);
+  const f=failures.find(x=>x.id===id);
+  const oldStatus=f?f.status:null;
+  if(f)Object.assign(f,patch);
   if(useLocal){persistLocal();render();}
   else{const ref=doc(failuresCol,f._docid||id);await updateDoc(ref,patch);}
+  if(patch.status&&patch.status!==oldStatus)logActivity('status',`set ${id} → ${patch.status}`);
+  else logActivity('edit',`edited failure ${id}`);
 }
 async function addFailure(obj){
+  obj.order=failures.length;
   if(useLocal){failures.push(obj);sortFailures();persistLocal();render();}
   else{await setDoc(doc(failuresCol,obj.id),obj);}
+  logActivity('add',`added failure ${obj.id} — ${obj.event}`);
 }
 async function removeFailure(id){
   const f=failures.find(x=>x.id===id);
   if(useLocal){failures=failures.filter(x=>x.id!==id);persistLocal();render();}
   else{await deleteDoc(doc(failuresCol,f._docid||id));}
+  logActivity('del',`deleted failure ${id}`);
+}
+async function reorderFailures(newOrderIds){
+  // newOrderIds: array of failure ids in desired order
+  newOrderIds.forEach((id,i)=>{const f=failures.find(x=>x.id===id);if(f)f.order=i;});
+  sortFailures();
+  if(useLocal){persistLocal();render();}
+  else{
+    const batch=writeBatch(DB);
+    newOrderIds.forEach((id,i)=>{const f=failures.find(x=>x.id===id);if(f)batch.update(doc(failuresCol,f._docid||id),{order:i});});
+    try{await batch.commit();}catch(e){console.error(e);}
+  }
 }
 async function addTask(obj){
   if(useLocal){tasks.push(obj);persistLocal();render();}
@@ -459,12 +553,38 @@ async function removeTask(id){
   else{await deleteDoc(doc(tasksCol,t._docid||id));}
 }
 
+/* ---------- ACTIVITY LOG / NOTIFICATIONS ---------- */
+async function logActivity(type,text){
+  const entry={id:'a'+Date.now()+Math.random().toString(36).slice(2,6),type,text,by:myName||'someone',at:Date.now()};
+  if(useLocal){activity.unshift(entry);activity=activity.slice(0,100);persistLocal();updateNotifBadge();}
+  else{try{await setDoc(doc(activityCol,entry.id),entry);}catch(e){console.error(e);}}
+}
+function lastSeen(){return Number(localStorage.getItem('viper_lastseen')||0);}
+function markSeen(){localStorage.setItem('viper_lastseen',Date.now());updateNotifBadge();}
+function unseenCount(){const ls=lastSeen();return activity.filter(a=>(a.at||0)>ls && a.by!==myName).length;}
+function updateNotifBadge(){
+  const b=document.getElementById('notifBadge');if(!b)return;
+  const n=unseenCount();
+  if(n>0){b.style.display='flex';b.textContent=n>9?'9+':String(n);}
+  else b.style.display='none';
+}
+
+/* ---------- SHARED DEFINE FILE ---------- */
+async function saveDefine(text){
+  defineText=text;
+  if(useLocal){persistLocal();}
+  else{try{await setDoc(doc(metaCol,'defineFile'),{text,updatedBy:myName,updatedAt:Date.now()});}catch(e){console.error(e);toast('Save failed');}}
+  logActivity('define','updated the shared define file');
+}
+
+
 function setSync(ok){
   const d=$('#syncDot'),t=$('#syncTxt');
   if(useLocal){d.className='dot off';t.textContent='local only';}
   else if(ok){d.className='dot on';t.textContent='live · synced';}
   else{d.className='dot off';t.textContent='offline';}
 }
+let LAST_ERROR='';
 
 /* ---------- PROGRESS ---------- */
 function counts(){
@@ -489,8 +609,11 @@ function render(){
   if(view==='failures')renderFailures();
   else if(view==='tasks')renderTasks();
   else if(view==='stats')renderStats();
+  else if(view==='define')renderDefine();
+  else if(view==='activity')renderActivity();
   else if(view==='setup')renderSetup();
   $('#fab').style.display=(view==='failures')?'flex':'none';
+  updateNotifBadge();
 }
 
 /* ---------- FAILURES VIEW ---------- */
@@ -523,15 +646,22 @@ function renderFailures(){
     html+=`<span class="chip ${filterCat===cat?'active':''}" data-cat="${cat}">${cat} <span class="ct">${catCounts[cat]}</span></span>`;});
   html+=`</div>`;
 
+  const canReorder=(filterCat==='all'&&filterStatus==='all'&&!search);
+  html+=`<div class="reorder-hint">
+    ${REORDER_MODE?'⠿ Drag cards to reorder. Tap Done when finished.':'Tip: reorder failures with the button →'}
+    <button class="reorder-toggle ${REORDER_MODE?'on':''}" id="reorderBtn" ${canReorder?'':'disabled style="opacity:.4"'}>${REORDER_MODE?'DONE':'⠿ REORDER'}</button>
+  </div>`;
+
   if(!list.length){
     html+=`<div class="empty"><div class="big">⌀</div>No failures match.<br>Try clearing filters.</div>`;
   }else{
-    html+=`<div class="list">`;
+    html+=`<div class="list" id="failList">`;
     list.forEach(f=>{
       const team=teamOf(f);
       const teamLbl=team==='sw'?'SOFTWARE':team==='emb'?'EMBEDDED':'SW+EMB';
-      html+=`<div class="card s-${statusClass(f.status)}" data-open="${esc(f.id)}">
+      html+=`<div class="card s-${statusClass(f.status)}" data-id="${esc(f.id)}" ${REORDER_MODE?'draggable="true"':`data-open="${esc(f.id)}"`}>
         <div class="chead">
+          ${REORDER_MODE?'<span class="draghandle">⠿</span>':''}
           <span class="cid">${esc(f.id)}</span>
           <span class="cev">${esc(f.event)}</span>
         </div>
@@ -550,7 +680,49 @@ function renderFailures(){
   $('#searchBox').addEventListener('focus',()=>setTimeout(()=>$('#searchBox').scrollIntoView({block:'nearest'}),300));
   main.querySelectorAll('.chip').forEach(ch=>ch.onclick=()=>{filterCat=ch.dataset.cat;renderFailures();});
   main.querySelectorAll('.sfilter').forEach(b=>b.onclick=()=>{filterStatus=b.dataset.s;renderFailures();});
-  main.querySelectorAll('[data-open]').forEach(c=>c.onclick=()=>openSheet(c.dataset.open));
+  const rb=$('#reorderBtn');
+  if(rb&&!rb.disabled)rb.onclick=()=>{REORDER_MODE=!REORDER_MODE;renderFailures();};
+  if(!REORDER_MODE){
+    main.querySelectorAll('[data-open]').forEach(c=>c.onclick=()=>openSheet(c.dataset.open));
+  }else{
+    setupDragDrop();
+  }
+}
+
+let REORDER_MODE=false;
+let _dragEl=null;
+function setupDragDrop(){
+  const listEl=document.getElementById('failList');if(!listEl)return;
+  const cards=[...listEl.querySelectorAll('.card')];
+  cards.forEach(card=>{
+    card.addEventListener('dragstart',e=>{_dragEl=card;card.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+    card.addEventListener('dragend',()=>{card.classList.remove('dragging');cards.forEach(c=>c.classList.remove('dragover'));commitOrder();});
+    card.addEventListener('dragover',e=>{e.preventDefault();
+      const after=e.clientY> card.getBoundingClientRect().top+card.offsetHeight/2;
+      cards.forEach(c=>c.classList.remove('dragover'));card.classList.add('dragover');
+      if(_dragEl&&_dragEl!==card){
+        if(after)card.after(_dragEl);else card.before(_dragEl);
+      }
+    });
+    // touch support for mobile
+    let touchStartY=0;
+    card.addEventListener('touchstart',e=>{if(!e.target.closest('.draghandle'))return;_dragEl=card;card.classList.add('dragging');touchStartY=e.touches[0].clientY;},{passive:true});
+    card.addEventListener('touchmove',e=>{if(!_dragEl)return;e.preventDefault();
+      const y=e.touches[0].clientY;const el=document.elementFromPoint(e.touches[0].clientX,y);
+      const over=el&&el.closest('.card');
+      if(over&&over!==_dragEl){const after=y>over.getBoundingClientRect().top+over.offsetHeight/2;
+        if(after)over.after(_dragEl);else over.before(_dragEl);}
+    },{passive:false});
+    card.addEventListener('touchend',()=>{if(_dragEl){_dragEl.classList.remove('dragging');_dragEl=null;commitOrder();}});
+  });
+}
+function commitOrder(){
+  const listEl=document.getElementById('failList');if(!listEl)return;
+  const ids=[...listEl.querySelectorAll('.card')].map(c=>c.dataset.id);
+  // only commit if order changed
+  const current=failures.map(f=>f.id).filter(id=>ids.includes(id));
+  if(ids.join(',')!==current.join(',')){reorderFailures(ids);toast('Order saved ✓');}
+  _dragEl=null;
 }
 function sfBtn(s,lbl,n){return `<button class="sfilter ${filterStatus===s?'active':''}" data-s="${s}">${lbl} <b>${n}</b></button>`;}
 
@@ -722,7 +894,7 @@ function openAdd(){
 function renderTasks(){
   let scope=lsLoad('viper_task_scope','all');
   let html=`<div class="banner"><h3>TASK BOARD</h3>
-    <p>Shared to-dos for the team. Tag each task <b>Software</b>, <b>Embedded</b> or <b>General</b>. Everyone sees changes live.</p></div>`;
+    <p>Shared to-dos. Tag each task by team, set a <b>priority</b>, and <b>assign</b> someone. Everyone sees changes live.</p></div>`;
 
   html+=`<div class="seg-toggle" id="taskScope">
     <button data-sc="all" class="${scope==='all'?'on':''}">ALL</button>
@@ -733,12 +905,19 @@ function renderTasks(){
 
   html+=`<div class="add-row">
     <input class="fin" id="taskInput" placeholder="New task…">
-    <select id="taskTeam" style="flex:0 0 96px"><option value="gen">General</option><option value="sw">Software</option><option value="emb">Embedded</option></select>
+  </div>
+  <div class="add-row" style="gap:7px">
+    <select id="taskTeam"><option value="gen">General</option><option value="sw">Software</option><option value="emb">Embedded</option></select>
+    <select id="taskPrio"><option value="high">🔴 High</option><option value="med" selected>🟡 Medium</option><option value="low">🟢 Low</option></select>
+    <input class="fin" id="taskAssignee" placeholder="Assign to…" style="flex:1">
   </div>
   <button class="btn btn-save" id="taskAdd" style="margin-bottom:18px">+ ADD TASK</button>`;
 
   let vis=tasks.filter(t=>scope==='all'||t.team===scope);
-  const open=vis.filter(t=>!t.done),done=vis.filter(t=>t.done);
+  // sort: open first by priority, then done
+  const prioRank={high:0,med:1,low:2};
+  const open=vis.filter(t=>!t.done).sort((a,b)=>(prioRank[a.prio||'med']-prioRank[b.prio||'med'])||((a.at||0)-(b.at||0)));
+  const done=vis.filter(t=>t.done);
 
   html+=`<div class="taskcol"><h3>OPEN <span class="n">${open.length}</span></h3>`;
   if(!open.length)html+=`<div class="empty" style="padding:20px">No open tasks 🎉</div>`;
@@ -757,23 +936,31 @@ function renderTasks(){
     if(!myName){promptName();return;}
     const v=$('#taskInput').value.trim();if(!v){toast('Enter a task');return;}
     await addTask({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),text:v,
-      team:$('#taskTeam').value,done:false,by:myName,at:Date.now()});
+      team:$('#taskTeam').value,prio:$('#taskPrio').value,assignee:$('#taskAssignee').value.trim(),
+      done:false,by:myName,at:Date.now()});
+    logActivity('task_add','added task "'+v.slice(0,40)+'"');
     toast('Task added ✓');
   };
   $('#taskInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('#taskAdd').click();});
   main.querySelectorAll('[data-toggle]').forEach(c=>c.onclick=()=>{
-    const t=tasks.find(x=>x.id===c.dataset.toggle);updateTask(t.id,{done:!t.done});});
+    const t=tasks.find(x=>x.id===c.dataset.toggle);updateTask(t.id,{done:!t.done});
+    logActivity('task_done',(t.done?'reopened':'completed')+' task "'+(t.text||'').slice(0,40)+'"');});
   main.querySelectorAll('[data-tdel]').forEach(b=>b.onclick=(e)=>{e.stopPropagation();
     if(confirm('Delete this task?'))removeTask(b.dataset.tdel);});
 }
 function taskCard(t){
   const lbl=t.team==='sw'?'SW':t.team==='emb'?'EMB':'GEN';
-  return `<div class="taskcard ${t.done?'done':''}">
+  const prio=t.prio||'med';
+  const prioDot=prio==='high'?'🔴':prio==='low'?'🟢':'🟡';
+  const prioLbl=prio==='high'?'HIGH':prio==='low'?'LOW':'MED';
+  return `<div class="taskcard ${t.done?'done':''} prio-${prio}">
     <div class="tcheck" data-toggle="${t.id}">✓</div>
     <div class="tbody">
       <div class="tt">${esc(t.text)}</div>
       <div class="tmeta">
+        <span class="pill prio ${prio}">${prioDot} ${prioLbl}</span>
         <span class="pill ${t.team}">${lbl}</span>
+        ${t.assignee?`<span class="pill assignee">👤 ${esc(t.assignee)}</span>`:''}
         <span class="who">${esc(t.by||'')}</span>
       </div>
     </div>
@@ -781,17 +968,45 @@ function taskCard(t){
   </div>`;
 }
 
-/* ---------- STATS VIEW ---------- */
+/* ---------- ANALYSIS VIEW ---------- */
+function donutSVG(done,prog,def,notstarted){
+  const tot=done+prog+def+notstarted||1;
+  const segs=[['#39d98a',done],['#ffb000',prog],['#4aa8ff',def],['#3a4a5c',notstarted]];
+  const r=52,cx=64,cy=64,circ=2*Math.PI*r;
+  let off=0,arcs='';
+  segs.forEach(([col,val])=>{
+    const len=val/tot*circ;
+    arcs+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${col}" stroke-width="18"
+      stroke-dasharray="${len} ${circ-len}" stroke-dashoffset="${-off}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    off+=len;
+  });
+  const pct=Math.round(done/tot*100);
+  return `<svg viewBox="0 0 128 128" width="128" height="128">${arcs}
+    <text x="64" y="60" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="26" font-weight="700" fill="#e6edf3">${pct}%</text>
+    <text x="64" y="78" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#8b9bb0">COMPLETE</text>
+  </svg>`;
+}
 function renderStats(){
   const c=counts();const tot=c.total||1;
-  let html=`<div class="statgrid">
-    <div class="scard green"><div class="big">${c.DONE||0}</div><div class="lbl">Done</div></div>
-    <div class="scard amber"><div class="big">${c['IN-PROGRESS']||0}</div><div class="lbl">In Progress</div></div>
-    <div class="scard blue"><div class="big">${c.DEFINED||0}</div><div class="lbl">Defined</div></div>
-    <div class="scard grey"><div class="big">${c['NOT YET STARTED']||0}</div><div class="lbl">Not Started</div></div>
+  const done=c.DONE||0,prog=c['IN-PROGRESS']||0,def=c.DEFINED||0,ns=c['NOT YET STARTED']||0;
+
+  let html=`<div class="banner"><h3>PROJECT ANALYSIS</h3>
+    <p>Live snapshot of progress, work split, and who's been doing what.</p></div>`;
+
+  // Donut + legend
+  html+=`<div class="analysis-top">
+    <div class="donut">${donutSVG(done,prog,def,ns)}</div>
+    <div class="donut-legend">
+      <div class="leg"><span class="ld" style="background:var(--green)"></span>Done <b>${done}</b></div>
+      <div class="leg"><span class="ld" style="background:var(--amber)"></span>In Progress <b>${prog}</b></div>
+      <div class="leg"><span class="ld" style="background:var(--blue)"></span>Defined <b>${def}</b></div>
+      <div class="leg"><span class="ld" style="background:#3a4a5c"></span>Not Started <b>${ns}</b></div>
+      <div class="leg total">Total <b>${tot}</b></div>
+    </div>
   </div>`;
 
-  html+=`<h3 style="font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--txt2);margin:8px 0 12px">PROGRESS BY CATEGORY</h3>`;
+  // Category progress
+  html+=`<h3 class="sec-h">PROGRESS BY CATEGORY</h3>`;
   CATEGORIES.forEach(cat=>{
     const items=failures.filter(f=>f.category===cat);if(!items.length)return;
     const d=items.filter(f=>f.status==='DONE').length;
@@ -800,7 +1015,7 @@ function renderStats(){
     const n=items.length;
     html+=`<div class="catbar">
       <div class="ctop"><span style="color:${CAT_COLOR[cat]}">${cat}</span>
-        <span class="cn">${d}/${n} done</span></div>
+        <span class="cn">${d}/${n} done · ${Math.round(d/n*100)}%</span></div>
       <div class="cseg">
         <i style="width:${d/n*100}%;background:var(--green)"></i>
         <i style="width:${p/n*100}%;background:var(--amber)"></i>
@@ -809,18 +1024,125 @@ function renderStats(){
     </div>`;
   });
 
-  // team split
+  // Work split
   const sw=failures.filter(f=>teamOf(f)==='sw').length;
   const emb=failures.filter(f=>teamOf(f)==='emb').length;
   const both=failures.filter(f=>teamOf(f)==='both').length;
-  html+=`<h3 style="font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--txt2);margin:20px 0 12px">WORK SPLIT</h3>
+  html+=`<h3 class="sec-h">WORK SPLIT</h3>
    <div class="statgrid">
     <div class="scard blue"><div class="big">${sw}</div><div class="lbl">Software only</div></div>
     <div class="scard" style="--c:#b58cff"><div class="big" style="color:#b58cff">${emb}</div><div class="lbl">Embedded only</div></div>
     <div class="scard green"><div class="big">${both}</div><div class="lbl">Both teams</div></div>
     <div class="scard amber"><div class="big">${tasks.filter(t=>!t.done).length}</div><div class="lbl">Open tasks</div></div>
    </div>`;
+
+  // Contributions by person (from activity log)
+  const byPerson={};
+  activity.forEach(a=>{if(a.by&&a.by!=='system'){byPerson[a.by]=(byPerson[a.by]||0)+1;}});
+  const people=Object.entries(byPerson).sort((a,b)=>b[1]-a[1]);
+  if(people.length){
+    const max=people[0][1]||1;
+    html+=`<h3 class="sec-h">CONTRIBUTIONS (last ${activity.length} changes)</h3>`;
+    people.forEach(([name,n])=>{
+      html+=`<div class="catbar">
+        <div class="ctop"><span style="color:var(--amber)">${esc(name)}</span><span class="cn">${n} change${n>1?'s':''}</span></div>
+        <div class="cseg"><i style="width:${n/max*100}%;background:var(--amber)"></i></div>
+      </div>`;
+    });
+  }
+
+  // Recent edits / last modified
+  html+=`<h3 class="sec-h">RECENT CHANGES</h3>`;
+  if(!activity.length){
+    html+=`<div class="empty" style="padding:24px">No changes recorded yet.</div>`;
+  }else{
+    const icon={status:'🔄',edit:'✎',add:'➕',del:'🗑',task_add:'▣',task_done:'✓',define:'⌗'};
+    html+=`<div class="actlist">`;
+    activity.slice(0,8).forEach(a=>{
+      html+=`<div class="actitem">
+        <div class="acticon">${icon[a.type]||'•'}</div>
+        <div class="actbody">
+          <div class="acttext">${esc(a.text||'')}</div>
+          <div class="actmeta"><span class="actby">${esc(a.by||'')}</span> · ${timeAgo(a.at||Date.now())}</div>
+        </div>
+      </div>`;
+    });
+    html+=`</div>`;
+    if(activity.length>8)html+=`<div class="reorder-hint" style="justify-content:center;margin-top:10px">Tap the 🔔 bell to see all activity</div>`;
+  }
+
   main.innerHTML=html;
+}
+
+/* ---------- DEFINE FILE VIEW ---------- */
+function renderDefine(){
+  const lines=(defineText||'').split('\n').length;
+  let html=`<div class="banner"><h3>SHARED DEFINE FILE</h3>
+    <p>The team's <b>define.h</b>. Edit and save — everyone gets the update live. Use this as the single source of truth for CAN IDs.</p></div>`;
+  html+=`<div class="define-actions">
+    <button class="btn btn-edit" id="defCopy">⧉ COPY</button>
+    <button class="btn btn-edit" id="defDownload">⬇ DOWNLOAD .h</button>
+    <button class="btn btn-save" id="defEdit">✎ EDIT</button>
+  </div>`;
+  html+=`<div class="define-meta">${lines} lines</div>`;
+  html+=`<pre class="define-view" id="defView">${esc(defineText||DEFAULT_DEFINE)}</pre>`;
+  main.innerHTML=html;
+  $('#defCopy').onclick=()=>{navigator.clipboard.writeText(defineText||DEFAULT_DEFINE).then(()=>toast('Copied ✓')).catch(()=>toast('Copy failed'));};
+  $('#defDownload').onclick=()=>{
+    const blob=new Blob([defineText||DEFAULT_DEFINE],{type:'text/plain'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='define.h';a.click();};
+  $('#defEdit').onclick=()=>openDefineEdit();
+}
+function openDefineEdit(){
+  if(!myName){promptName();return;}
+  $('#sheetContent').innerHTML=`
+    <div class="sh-head"><div class="top">
+      <span class="cid">define.h</span><h2>Edit Define File</h2>
+      <button class="sh-close" id="shClose">✕</button></div></div>
+    <div class="sh-body">
+      <div class="field"><label>Shared define.h (everyone sees changes)</label>
+      <textarea class="fin code" id="defText" style="min-height:50vh;font-family:var(--mono);font-size:12px">${esc(defineText||DEFAULT_DEFINE)}</textarea></div>
+      <div class="sh-actions">
+        <button class="btn btn-cancel" id="shCancel">CANCEL</button>
+        <button class="btn btn-save" id="defSave">SAVE</button>
+      </div>
+    </div>`;
+  $('#overlay').classList.add('open');$('#sheet').classList.add('open');
+  $('#shClose').onclick=closeSheet;$('#shCancel').onclick=closeSheet;
+  $('#defSave').onclick=async()=>{await saveDefine($('#defText').value);closeSheet();toast('Define saved ✓');render();};
+}
+
+/* ---------- ACTIVITY / NOTIFICATIONS VIEW ---------- */
+function timeAgo(ts){
+  const s=Math.floor((Date.now()-ts)/1000);
+  if(s<60)return 'just now';
+  if(s<3600)return Math.floor(s/60)+'m ago';
+  if(s<86400)return Math.floor(s/3600)+'h ago';
+  return Math.floor(s/86400)+'d ago';
+}
+function renderActivity(){
+  const icon={status:'🔄',edit:'✎',add:'➕',del:'🗑',task_add:'▣',task_done:'✓',define:'⌗'};
+  let html=`<div class="banner"><h3>ACTIVITY</h3>
+    <p>Every change the team makes shows here, newest first. Opening this clears your notification badge.</p></div>`;
+  if(!activity.length){
+    html+=`<div class="empty"><div class="big">🔔</div>No activity yet.<br>Changes will appear here.</div>`;
+  }else{
+    const ls=lastSeen();
+    html+=`<div class="actlist">`;
+    activity.forEach(a=>{
+      const isNew=(a.at||0)>ls && a.by!==myName;
+      html+=`<div class="actitem ${isNew?'new':''}">
+        <div class="acticon">${icon[a.type]||'•'}</div>
+        <div class="actbody">
+          <div class="acttext">${esc(a.text||'')}</div>
+          <div class="actmeta"><span class="actby">${esc(a.by||'')}</span> · ${timeAgo(a.at||Date.now())}</div>
+        </div>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+  main.innerHTML=html;
+  markSeen();
 }
 
 /* ---------- SETUP VIEW ---------- */
@@ -848,16 +1170,29 @@ Replace the PASTE_HERE values with your real config keys. Save.<br><br>
   </div>
 
   <div class="cfgnote" style="margin-top:14px">
-<b>EXPORT BACKUP</b> — download the current data as JSON anytime.<br><br>
+<b>EXPORT BACKUP</b> — download all data (failures, tasks, activity, define) as JSON anytime.<br><br>
 <button class="btn btn-edit" id="expBtn" style="width:100%">⬇ EXPORT JSON BACKUP</button>
+  </div>
+
+  <div class="cfgnote" style="margin-top:14px">
+<b>CONNECTION DIAGNOSTICS</b><br><br>
+Status: <b style="color:${useLocal?'var(--red)':'var(--green)'}">${useLocal?'LOCAL ONLY':'LIVE · SYNCED'}</b><br>
+${useLocal&&LAST_ERROR?`<br>Last error:<br><span style="color:var(--red)">${esc(LAST_ERROR)}</span><br><br>Most common fixes:<br>1. Firebase → Authentication → Sign-in method → enable <b>Anonymous</b>.<br>2. Firebase → Authentication → Settings → Authorized domains → add your <b>github.io</b> domain.`:''}
+${useLocal&&!LAST_ERROR?'<br>No error captured (config may still be PASTE_HERE).':''}
+  </div>
+
+  <div class="cfgnote" style="margin-top:14px">
+<b>LOCK APP</b> — sign out and require the team password again (use after changing the password).<br><br>
+<button class="btn btn-edit" id="lockBtnSetup" style="width:100%">🔒 LOCK APP</button>
   </div>
   <div class="who-tag" style="margin-top:20px">VIPER Failures Tracker · 111 procedures loaded</div>`;
   $('#nameSave').onclick=()=>{myName=$('#nameInput').value.trim();localStorage.setItem('viper_name',myName);toast('Name saved ✓');};
   $('#expBtn').onclick=()=>{
-    const blob=new Blob([JSON.stringify({failures,tasks},null,2)],{type:'application/json'});
+    const blob=new Blob([JSON.stringify({failures,tasks,activity,defineText},null,2)],{type:'application/json'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);
     a.download='viper_failures_backup.json';a.click();
   };
+  $('#lockBtnSetup').onclick=()=>{localStorage.removeItem('viper_unlocked');location.reload();};
 }
 
 function promptName(){
@@ -873,6 +1208,7 @@ function switchTab(v){
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{switchTab(t.dataset.view);render();});
 $('#fab').onclick=openAdd;
 $('#overlay').onclick=closeSheet;
+document.getElementById('bellBtn').onclick=()=>{switchTab('activity');markSeen();render();};
 
 /* expose for inline */
 window.__viper={openSheet,closeSheet};
@@ -886,7 +1222,7 @@ function showLock(){
   const btn=document.getElementById('lockBtn');
   const err=document.getElementById('lockErr');
   function tryUnlock(){
-    if(inp.value.trim().toLowerCase()===TEAM_PASSWORD.trim().toLowerCase()){
+    if(inp.value===TEAM_PASSWORD){
       localStorage.setItem('viper_unlocked','1');
       startApp();
     }else{
