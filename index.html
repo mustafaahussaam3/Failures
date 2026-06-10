@@ -109,6 +109,7 @@ main{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;paddin
 .sfilter.active[data-s="IN-PROGRESS"]{color:var(--amber);border-color:var(--amber);}
 .sfilter.active[data-s="DEFINED"]{color:var(--blue);border-color:var(--blue);}
 .sfilter.active[data-s="NOT YET STARTED"]{color:var(--txt3);border-color:var(--grey);}
+.sfilter.active[data-s="TASK"]{color:var(--purple);border-color:var(--purple);}
 
 /* ---- Cards ---- */
 .list{display:flex;flex-direction:column;gap:9px;}
@@ -126,6 +127,18 @@ main{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;paddin
 .assign-box label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--txt3);text-transform:uppercase;margin-bottom:8px;}
 .assign-row{display:grid;grid-template-columns:1fr 112px;gap:8px;margin-bottom:9px;}
 .task-status{background:var(--bg);border:1px solid var(--line2);border-radius:7px;color:var(--txt);font-family:var(--mono);font-size:10px;padding:5px 7px;max-width:150px;}
+.task-progress{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px;}
+.pbar{border:1px solid var(--line2);border-radius:8px;padding:7px 8px;font-family:var(--mono);font-size:9px;color:var(--txt3);display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:var(--bg);}
+.pbar.done{border-color:var(--green-dim);color:var(--green);background:rgba(57,217,138,.08);}
+.pbar b{font-size:10px;color:inherit;}
+.task-can{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;font-family:var(--mono);font-size:9px;color:var(--txt3);}
+.task-can span{border:1px solid var(--line2);border-radius:6px;padding:3px 6px;background:var(--bg);}
+.task-notes{margin-top:8px;color:var(--txt2);font-size:12px;line-height:1.4;white-space:pre-wrap;background:rgba(255,255,255,.02);border-left:2px solid var(--line2);padding:7px 9px;border-radius:0 8px 8px 0;}
+.taskcard{cursor:pointer;}
+.taskcard .tcheck,.taskcard .tdel,.taskcard select,.taskcard .pbar{cursor:pointer;}
+.idgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px;}
+@media(max-width:520px){.assign-row,.idgrid{grid-template-columns:1fr}.task-progress{grid-template-columns:1fr}}
+
 .card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--grey);}
 .card.s-DONE::before{background:var(--green);}
 .card.s-IN-PROGRESS::before{background:var(--amber);}
@@ -486,16 +499,64 @@ async function removeTask(id){
   else{await deleteDoc(doc(tasksCol,t._docid||id));}
 }
 
+
+/* ---------- CAN DEFINE HELPERS ---------- */
+function makeDefineName(f){
+  const raw=((f&&f.event)||'TASK').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  return (raw||'TASK').slice(0,48);
+}
+function usedCanIds(){
+  const used=new Set();
+  const txt=(defineText||DEFAULT_DEFINE||'');
+  [...txt.matchAll(/^\s*#define\s+[A-Z0-9_]+\s+\(?\s*(\d+)\s*\)?/gm)].forEach(m=>used.add(parseInt(m[1],10)));
+  tasks.forEach(t=>{['failureCanId','correctiveCanId'].forEach(k=>{const n=parseInt(t[k],10);if(!isNaN(n))used.add(n);});});
+  return used;
+}
+function nextCanPair(){
+  const used=usedCanIds();
+  for(let n=600;n<998;n+=2){
+    if(!used.has(n)&&!used.has(n+1))return {failure:n,corrective:n+1};
+  }
+  let mx=599;used.forEach(v=>{if(v>mx)mx=v;});
+  const n=(mx%2===0)?mx+2:mx+1;
+  return {failure:n,corrective:n+1};
+}
+function defineLinesForTask(t){
+  const name=(t.defineName||'TASK').toUpperCase().replace(/[^A-Z0-9_]+/g,'_').replace(/^_+|_+$/g,'')||'TASK';
+  const fid=parseInt(t.failureCanId,10)||0;
+  const cid=parseInt(t.correctiveCanId,10)||0;
+  return {name,lines:[`#define ${name}_FAILURE${' '.repeat(Math.max(1,48-(name.length+8)))}${fid}`,`#define ${name}_CORRECTIVE${' '.repeat(Math.max(1,45-(name.length+11)))}${cid}`]};
+}
+async function upsertDefineForTask(t){
+  if(!t||!t.defineName||!t.failureCanId||!t.correctiveCanId)return;
+  let text=defineText||DEFAULT_DEFINE||'';
+  const {name,lines}=defineLinesForTask(t);
+  function upsertLine(suffix,line){
+    const re=new RegExp(`^\\s*#define\\s+${name}_${suffix}\\s+.*$`,'m');
+    if(re.test(text))text=text.replace(re,line);
+    else text=text.replace(/\n#endif\s*$/,'')+`\n${line}\n#endif`;
+  }
+  upsertLine('FAILURE',lines[0]);
+  upsertLine('CORRECTIVE',lines[1]);
+  await saveDefine(text);
+}
+function taskDoneFromProgress(patch,t){
+  const emb=('embeddedDone' in patch)?patch.embeddedDone:!!t.embeddedDone;
+  const sw=('softwareDone' in patch)?patch.softwareDone:!!t.softwareDone;
+  return emb&&sw;
+}
+
 /* ---------- FAILURE -> TASK (with status sync) ---------- */
 function taskForFailure(fid){return tasks.find(t=>t.failureId===fid);}
-async function convertFailureToTask(fid,assignee='',teamOverride=''){
+async function convertFailureToTask(fid,assignee='',teamOverride='',idPatch={}){
   if(!myName){promptName();return;}
   const f=failures.find(x=>x.id===fid);if(!f)return;
   if(taskForFailure(fid)){toast('Already on the task board');return;}
   const inferred=teamOf(f);
   const taskTeam=teamOverride || ((inferred==='sw'||inferred==='emb')?inferred:'gen');
   const who=(assignee||f.assignee||'').trim();
-  await addTask({
+  const pair=nextCanPair();
+  const obj={
     id:'ft_'+fid.replace(/\./g,'_'),
     failureId:fid,
     text:`[${fid}] ${f.event}`,
@@ -503,18 +564,40 @@ async function convertFailureToTask(fid,assignee='',teamOverride=''){
     assignee:who,
     status:f.status==='DONE'?'DONE':'IN-PROGRESS',
     done:(f.status==='DONE'),
+    embeddedDone:false,
+    softwareDone:false,
+    progressNotes:'',
+    defineName:(idPatch.defineName||makeDefineName(f)),
+    failureCanId:idPatch.failureCanId||pair.failure,
+    correctiveCanId:idPatch.correctiveCanId||pair.corrective,
     by:myName,at:Date.now()
-  });
+  };
+  await addTask(obj);
+  await upsertDefineForTask(obj);
   await updateFailure(fid,{assignee:who,status:f.status==='DONE'?'DONE':'IN-PROGRESS',updatedBy:myName,updatedAt:Date.now()});
-  toast('Assigned and moved to Tasks ✓');
+  toast('Assigned, added to Tasks, and DEFINE updated ✓');
 }
 // changing a linked task's status updates the failure everywhere
 async function setLinkedTaskStatus(taskId,newStatus){
   const t=tasks.find(x=>x.id===taskId);if(!t)return;
-  await updateTask(t.id,{status:newStatus,done:(newStatus==='DONE')});
+  const patch={status:newStatus,done:(newStatus==='DONE')};
+  if(newStatus==='DONE'){patch.embeddedDone=true;patch.softwareDone=true;}
+  await updateTask(t.id,patch);
   if(t.failureId){
     const f=failures.find(x=>x.id===t.failureId);
     if(f&&f.status!==newStatus)await updateFailure(t.failureId,{status:newStatus});
+  }
+}
+async function updateTaskProgress(taskId,patch){
+  const t=tasks.find(x=>x.id===taskId);if(!t)return;
+  const done=taskDoneFromProgress(patch,t);
+  patch.done=done;
+  patch.status=done?'DONE':'IN-PROGRESS';
+  await updateTask(taskId,patch);
+  const nt=tasks.find(x=>x.id===taskId)||Object.assign({},t,patch);
+  await upsertDefineForTask(Object.assign({},t,patch));
+  if(t.failureId){
+    await updateFailure(t.failureId,{status:patch.status,updatedBy:myName,updatedAt:Date.now()});
   }
 }
 // editing a failure's status updates its linked task
@@ -564,7 +647,8 @@ function renderFailures(){
   const c=counts();
   let list=failures.filter(f=>{
     if(filterCat!=='all'&&f.category!==filterCat)return false;
-    if(filterStatus!=='all'&&f.status!==filterStatus)return false;
+    if(filterStatus==='TASK'&&!taskForFailure(f.id))return false;
+    if(filterStatus!=='all'&&filterStatus!=='TASK'&&f.status!==filterStatus)return false;
     if(search){const q=search.toLowerCase();
       if(!(f.event.toLowerCase().includes(q)||f.id.includes(q)||(f.cause||'').toLowerCase().includes(q)))return false;}
     return true;
@@ -581,6 +665,7 @@ function renderFailures(){
     ${sfBtn('IN-PROGRESS','IN-PROG',c['IN-PROGRESS']||0)}
     ${sfBtn('DEFINED','DEFINED',c.DEFINED||0)}
     ${sfBtn('NOT YET STARTED','NOT STARTED',c['NOT YET STARTED']||0)}
+    ${sfBtn('TASK','TASK',tasks.filter(t=>t.failureId).length)}
   </div>`;
 
   html+=`<div class="chips">
@@ -706,6 +791,7 @@ function drawSheet(f){
             <input class="fin" id="assignTo" value="${esc(f.assignee||'')}" placeholder="Assigned to / name">
             <select id="assignTeam"><option value="gen">General</option><option value="sw" ${team==='sw'?'selected':''}>Software</option><option value="emb" ${team==='emb'?'selected':''}>Embedded</option></select>
           </div>
+          ${(()=>{const p=nextCanPair();return `<div class="field" style="margin-bottom:10px"><label>DEFINE NAME</label><input class="fin" id="assignDefine" value="${esc(makeDefineName(f))}" placeholder="ENGINE_FIRE"></div><div class="idgrid"><div><label>FAILURE CAN ID</label><input class="fin" id="assignFailCan" type="number" value="${p.failure}"></div><div><label>CORRECTIVE CAN ID</label><input class="fin" id="assignCorrCan" type="number" value="${p.corrective}"></div></div>`})()}
         </div>`}
         <div class="sh-actions">
           <button class="btn btn-task" id="shTask">${taskForFailure(f.id)?'▣ OPEN TASK':'＋ ASSIGN AS TASK'}</button>
@@ -720,7 +806,7 @@ function drawSheet(f){
       else{
         const who=$('#assignTo')?$('#assignTo').value.trim():'';
         const tm=$('#assignTeam')?$('#assignTeam').value:'';
-        convertFailureToTask(f.id,who,tm);closeSheet();
+        convertFailureToTask(f.id,who,tm,{defineName:$('#assignDefine')?$('#assignDefine').value.trim():'',failureCanId:$('#assignFailCan')?$('#assignFailCan').value:'',correctiveCanId:$('#assignCorrCan')?$('#assignCorrCan').value:''});closeSheet();
       }
     };
   }else{
@@ -865,32 +951,107 @@ function renderTasks(){
   $('#taskAdd').onclick=async()=>{
     if(!myName){promptName();return;}
     const v=$('#taskInput').value.trim();if(!v){toast('Enter a task');return;}
-    await addTask({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),text:v,
-      team:$('#taskTeam').value,done:false,by:myName,at:Date.now()});
+    const pair=nextCanPair();
+    const obj={id:'t'+Date.now()+Math.random().toString(36).slice(2,6),text:v,
+      team:$('#taskTeam').value,done:false,status:'IN-PROGRESS',embeddedDone:false,softwareDone:false,progressNotes:'',
+      defineName:makeDefineName({event:v}),failureCanId:pair.failure,correctiveCanId:pair.corrective,by:myName,at:Date.now()};
+    await addTask(obj);await upsertDefineForTask(obj);
     toast('Task added ✓');
   };
   $('#taskInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('#taskAdd').click();});
-  main.querySelectorAll('[data-toggle]').forEach(c=>c.onclick=()=>{
-    const t=tasks.find(x=>x.id===c.dataset.toggle);updateTask(t.id,{done:!t.done});});
+  main.querySelectorAll('[data-toggle]').forEach(c=>c.onclick=(e)=>{e.stopPropagation();
+    const t=tasks.find(x=>x.id===c.dataset.toggle);
+    const done=!t.done;
+    const patch={done,status:done?'DONE':'IN-PROGRESS',embeddedDone:done,softwareDone:done};
+    updateTaskProgress(t.id,patch);
+  });
+  main.querySelectorAll('[data-pdone]').forEach(b=>b.onclick=(e)=>{e.stopPropagation();
+    const [id,k]=b.dataset.pdone.split('|');const t=tasks.find(x=>x.id===id);if(!t)return;
+    const patch={};patch[k]=!t[k];updateTaskProgress(id,patch);
+  });
   main.querySelectorAll('[data-tdel]').forEach(b=>b.onclick=(e)=>{e.stopPropagation();
     if(confirm('Delete this task?'))removeTask(b.dataset.tdel);});
-  main.querySelectorAll('[data-tstatus]').forEach(sel=>sel.onchange=()=>setLinkedTaskStatus(sel.dataset.tstatus,sel.value));
+  main.querySelectorAll('[data-tstatus]').forEach(sel=>sel.onchange=(e)=>{e.stopPropagation();setLinkedTaskStatus(sel.dataset.tstatus,sel.value);});
+  main.querySelectorAll('[data-topen]').forEach(card=>card.onclick=()=>openTaskSheet(card.dataset.topen));
 }
 function taskCard(t){
   const lbl=t.team==='sw'?'SW':t.team==='emb'?'EMB':'GEN';
-  return `<div class="taskcard ${t.done?'done':''}">
-    <div class="tcheck" data-toggle="${t.id}">✓</div>
+  const emb=!!t.embeddedDone, sw=!!t.softwareDone;
+  return `<div class="taskcard ${t.done?'done':''}" data-topen="${esc(t.id)}">
+    <div class="tcheck" data-toggle="${esc(t.id)}">✓</div>
     <div class="tbody">
       <div class="tt">${esc(t.text)}</div>
       <div class="tmeta">
-        <span class="pill ${t.team}">${lbl}</span>
-        ${t.failureId?`<select class="task-status" data-tstatus="${t.id}">${STATUSES.map(s=>`<option ${((t.status||'IN-PROGRESS')===s)?'selected':''}>${s}</option>`).join('')}</select>`:''}
+        <span class="pill ${esc(t.team||'gen')}">${lbl}</span>
+        ${t.failureId?`<select class="task-status" data-tstatus="${esc(t.id)}">${STATUSES.map(s=>`<option ${((t.status||'IN-PROGRESS')===s)?'selected':''}>${s}</option>`).join('')}</select>`:''}
         ${t.assignee?`<span class="who">👤 ${esc(t.assignee)}</span>`:''}
         <span class="who">${esc(t.by||'')}</span>
       </div>
+      <div class="task-progress">
+        <div class="pbar ${emb?'done':''}" data-pdone="${esc(t.id)}|embeddedDone"><b>EMBEDDED DONE</b><span>${emb?'✓':'○'}</span></div>
+        <div class="pbar ${sw?'done':''}" data-pdone="${esc(t.id)}|softwareDone"><b>SOFTWARE DONE</b><span>${sw?'✓':'○'}</span></div>
+      </div>
+      ${(t.defineName||t.failureCanId||t.correctiveCanId)?`<div class="task-can"><span>${esc(t.defineName||'NO_NAME')}</span><span>FAIL: ${esc(t.failureCanId||'—')}</span><span>CORR: ${esc(t.correctiveCanId||'—')}</span></div>`:''}
+      ${t.progressNotes?`<div class="task-notes">${esc(t.progressNotes)}</div>`:''}
     </div>
-    <button class="tdel" data-tdel="${t.id}">✕</button>
+    <button class="tdel" data-tdel="${esc(t.id)}">✕</button>
   </div>`;
+}
+
+function openTaskSheet(id){
+  const t=tasks.find(x=>x.id===id);if(!t)return;
+  const f=t.failureId?failures.find(x=>x.id===t.failureId):null;
+  $('#sheetContent').innerHTML=`
+    <div class="sh-head"><div class="top">
+      <span class="cid">TASK</span><h2>${esc(t.text)}</h2>
+      <button class="sh-close" id="shClose">✕</button></div></div>
+    <div class="sh-body">
+      ${f?`<div class="field"><label>Linked Failure</label><div class="val"><b>${esc(f.id)}</b> — ${esc(f.event)}</div></div>`:''}
+      <div class="ctrlgrid">
+        <div class="ctrl"><label>Assigned To</label><input class="fin" id="tdAssignee" value="${esc(t.assignee||'')}"></div>
+        <div class="ctrl"><label>Team</label><select id="tdTeam"><option value="gen" ${t.team==='gen'?'selected':''}>General</option><option value="sw" ${t.team==='sw'?'selected':''}>Software</option><option value="emb" ${t.team==='emb'?'selected':''}>Embedded</option></select></div>
+        <div class="ctrl"><label>Embedded Done</label><select id="tdEmb"><option value="false" ${!t.embeddedDone?'selected':''}>No</option><option value="true" ${t.embeddedDone?'selected':''}>Yes</option></select></div>
+        <div class="ctrl"><label>Software Done</label><select id="tdSw"><option value="false" ${!t.softwareDone?'selected':''}>No</option><option value="true" ${t.softwareDone?'selected':''}>Yes</option></select></div>
+      </div>
+      <div class="field"><label>Task Text</label><input class="fin" id="tdText" value="${esc(t.text||'')}"></div>
+      <div class="field"><label>Progress Notes</label><textarea class="fin" id="tdNotes" placeholder="Write progress, blockers, next step…">${esc(t.progressNotes||'')}</textarea></div>
+      <div class="field"><label>DEFINE Name</label><input class="fin" id="tdDefine" value="${esc(t.defineName||makeDefineName(f||{event:t.text}))}" placeholder="ENGINE_FIRE"></div>
+      <div class="idgrid">
+        <div><label>Failure CAN ID</label><input class="fin" id="tdFailCan" type="number" value="${esc(t.failureCanId||'')}"></div>
+        <div><label>Corrective CAN ID</label><input class="fin" id="tdCorrCan" type="number" value="${esc(t.correctiveCanId||'')}"></div>
+      </div>
+      <div class="cfgnote" style="margin-top:0">Saving this task updates <b>DEFINE</b> automatically as:<br><br><span id="tdPreview"></span></div>
+      <div class="sh-actions">
+        <button class="btn btn-cancel" id="tdCancel">CANCEL</button>
+        <button class="btn btn-save" id="tdSave">SAVE TASK</button>
+      </div>
+    </div>`;
+  function preview(){
+    const tmp={defineName:$('#tdDefine').value,failureCanId:$('#tdFailCan').value,correctiveCanId:$('#tdCorrCan').value};
+    const dl=defineLinesForTask(tmp).lines.join('\n');
+    $('#tdPreview').innerHTML=`<pre style="white-space:pre-wrap;margin:0;font-family:var(--mono);font-size:10px;color:var(--txt)">${esc(dl)}</pre>`;
+  }
+  ['tdDefine','tdFailCan','tdCorrCan'].forEach(i=>$('#'+i).addEventListener('input',preview));
+  preview();
+  $('#overlay').classList.add('open');$('#sheet').classList.add('open');
+  $('#shClose').onclick=closeSheet;$('#tdCancel').onclick=closeSheet;
+  $('#tdSave').onclick=async()=>{
+    if(!myName){promptName();return;}
+    const patch={
+      text:$('#tdText').value.trim()||t.text,
+      assignee:$('#tdAssignee').value.trim(),
+      team:$('#tdTeam').value,
+      embeddedDone:$('#tdEmb').value==='true',
+      softwareDone:$('#tdSw').value==='true',
+      progressNotes:$('#tdNotes').value,
+      defineName:$('#tdDefine').value.trim(),
+      failureCanId:$('#tdFailCan').value,
+      correctiveCanId:$('#tdCorrCan').value,
+      updatedBy:myName,updatedAt:Date.now()
+    };
+    await updateTaskProgress(t.id,patch);
+    closeSheet();toast('Task and DEFINE saved ✓');
+  };
 }
 
 /* ---------- STATS VIEW ---------- */
