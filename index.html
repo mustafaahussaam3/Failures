@@ -384,9 +384,9 @@ textarea.fin{resize:vertical;min-height:80px;line-height:1.5;font-size:13px;}
 .week-stage-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-top:10px;}
 .week-stage-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;cursor:pointer;transition:transform .08s,border-color .2s;}
 .week-stage-card:active{transform:scale(.99);}
-.week-stage-card.emb{border-color:rgba(181,140,255,.38);}.week-stage-card.sw{border-color:rgba(74,168,255,.38);}.week-stage-card.test{border-color:rgba(57,217,138,.34);}
+.week-stage-card.emb{border-color:rgba(181,140,255,.38);}.week-stage-card.sw{border-color:rgba(74,168,255,.38);}.week-stage-card.test{border-color:rgba(57,217,138,.34);}.week-stage-card.mech{border-color:rgba(255,176,0,.34);}.week-stage-card.elec{border-color:rgba(74,168,255,.46);}
 .week-stage-title{font-family:var(--mono);font-size:10px;letter-spacing:.7px;color:var(--txt2);text-transform:uppercase;margin-bottom:7px;display:flex;justify-content:space-between;gap:6px;align-items:center;}
-.week-stage-card.emb .week-stage-title{color:var(--purple);}.week-stage-card.sw .week-stage-title{color:var(--blue);}.week-stage-card.test .week-stage-title{color:var(--green);}
+.week-stage-card.emb .week-stage-title{color:var(--purple);}.week-stage-card.sw .week-stage-title{color:var(--blue);}.week-stage-card.test .week-stage-title{color:var(--green);}.week-stage-card.mech .week-stage-title{color:var(--amber);}.week-stage-card.elec .week-stage-title{color:var(--blue);}
 .week-stage-big{font-family:var(--mono);font-size:28px;font-weight:700;line-height:1;color:var(--txt);}
 .week-stage-sub{font-size:11px;color:var(--txt2);line-height:1.35;margin-top:6px;}
 .week-mini-bar{height:6px;border-radius:5px;background:var(--panel2);overflow:hidden;margin-top:9px;}
@@ -399,6 +399,20 @@ textarea.fin{resize:vertical;min-height:80px;line-height:1.5;font-size:13px;}
 .task-summary-item .name{font-weight:700;font-size:13px;line-height:1.3;}.task-summary-item .meta{font-family:var(--mono);font-size:9px;color:var(--txt3);margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;}.task-summary-item .meta span{border:1px solid var(--line2);border-radius:6px;padding:3px 6px;background:var(--bg);}
 .member-manage{display:flex;gap:8px;align-items:center;margin-top:10px;}.member-manage input{flex:1;}.member-list-edit{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0 18px;}.member-chip{display:flex;align-items:center;gap:6px;border:1px solid var(--line2);border-radius:18px;background:var(--panel);padding:6px 9px;font-family:var(--mono);font-size:10px;color:var(--txt2);}.member-chip button{background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;padding:0;}
 @media(max-width:520px){.week-stage-grid,.week-insights{grid-template-columns:1fr}.task-filter button{font-size:9px;padding:8px 10px}}
+
+/* ---- Task work-scope picker ---- */
+.work-picker{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 12px;}
+.work-picker label{display:flex!important;align-items:center;gap:6px;margin:0!important;padding:7px 10px;border-radius:9px;border:1px solid var(--line2);background:var(--bg);font-family:var(--mono)!important;font-size:10px!important;letter-spacing:.2px!important;color:var(--txt2)!important;text-transform:none!important;cursor:pointer;}
+.work-picker input{accent-color:var(--amber);}
+.work-picker label:has(input:checked){border-color:var(--amber-dim);color:var(--amber)!important;background:rgba(255,176,0,.07);}
+.work-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;}
+.work-tag{font-family:var(--mono);font-size:8.5px;padding:2px 6px;border-radius:5px;border:1px solid var(--line2);color:var(--txt2);background:var(--bg);}
+.work-tag.done{color:var(--green);border-color:var(--green-dim);background:rgba(57,217,138,.07);}
+.work-tag.need{color:var(--amber);border-color:var(--amber-dim);background:rgba(255,176,0,.07);}
+.task-filter{display:flex;gap:6px;overflow-x:auto;padding-bottom:9px;margin-bottom:10px;scrollbar-width:none;}
+.task-filter::-webkit-scrollbar{display:none;}
+.task-filter button{flex:0 0 auto;padding:8px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--panel);color:var(--txt2);font-family:var(--mono);font-size:10px;cursor:pointer;}
+.task-filter button.on{background:var(--amber);border-color:var(--amber);color:#1a1200;font-weight:700;}
 
 /* ---- Lock screen ---- */
 .lock{position:fixed;inset:0;z-index:300;background:var(--bg);
@@ -565,6 +579,14 @@ const CAT_COLOR = {Engine:"#ff5c5c",Electrical:"#4aa8ff",Fuel:"#ffb000",Hydrauli
 const PRIORITY_ORDER = {urgent:0,high:1,normal:2,low:3};
 const COMMUNITY_TYPES = ["message","update","assignment","decision","blocker"];
 const EMOJIS = ["✅","👍","🙏","😂","❤️","🔥","⚠️","🚀","👀","💡","🧪","🛠️","📌","📣","❌","⏳"];
+const TASK_STAGE_ORDER = ["embedded","software","mechanical","electrical","test"];
+const TASK_STAGE_META = {
+  embedded:{flag:'embeddedDone',at:'embeddedDoneAt',by:'embeddedDoneBy',label:'Embedded',short:'EMB',cls:'emb',icon:'🛠️'},
+  software:{flag:'softwareDone',at:'softwareDoneAt',by:'softwareDoneBy',label:'Software',short:'SW',cls:'sw',icon:'💻'},
+  mechanical:{flag:'mechanicalDone',at:'mechanicalDoneAt',by:'mechanicalDoneBy',label:'Mechanical',short:'MECH',cls:'mech',icon:'⚙️'},
+  electrical:{flag:'electricalDone',at:'electricalDoneAt',by:'electricalDoneBy',label:'Electrical',short:'ELEC',cls:'elec',icon:'🔌'},
+  test:{flag:'testDone',at:'testDoneAt',by:'testDoneBy',label:'Test',short:'TEST',cls:'test',icon:'🧪'}
+};
 
 const $ = s=>document.querySelector(s);
 const main = $('#main');
@@ -614,19 +636,70 @@ function statusBadge(s){return s==='DONE'?'DONE':s==='IN-PROGRESS'?'INPROG':s===
 
 function normalizePriority(p){p=String(p||'normal').toLowerCase();return ['urgent','high','normal','low'].includes(p)?p:'normal';}
 function priorityLabel(p){p=normalizePriority(p);return p==='urgent'?'URGENT':p==='high'?'HIGH':p==='low'?'LOW':'NORMAL';}
-function taskPhase(t){if(t.done||(t.embeddedDone&&t.softwareDone&&t.testDone))return 'done';if(t.embeddedDone&&t.softwareDone)return 'test';return 'open';}
+function cleanRequiredStages(list){
+  const raw=Array.isArray(list)?list:String(list||'').split(/[ ,|]+/);
+  const seen=new Set(),out=[];
+  raw.forEach(x=>{const k=String(x||'').toLowerCase().trim();if(TASK_STAGE_ORDER.includes(k)&&!seen.has(k)){seen.add(k);out.push(k);}});
+  return out;
+}
+function defaultRequiredStagesForTeam(team){
+  team=String(team||'gen').toLowerCase();
+  if(team==='sw')return ['software'];
+  if(team==='emb')return ['embedded'];
+  if(team==='mech')return ['mechanical'];
+  if(team==='elec')return ['electrical'];
+  return ['embedded','software','test'];
+}
+function taskRequiredStages(t){
+  t=t||{};
+  let req=cleanRequiredStages(t.requiredStages||t.workStages||t.stagesRequired);
+  if(!req.length){
+    const legacy=('embeddedDone' in t)||('softwareDone' in t)||('testDone' in t);
+    req=legacy?['embedded','software','test']:defaultRequiredStagesForTeam(t.team);
+  }
+  return req.length?req:['software'];
+}
+function taskRequires(t,stage){return taskRequiredStages(t).includes(stage);}
+function taskStageDone(t,stage){const m=TASK_STAGE_META[stage];return !!(m&&t&&t[m.flag]);}
+function taskPhase(t){
+  const req=taskRequiredStages(t);
+  if(req.every(st=>taskStageDone(t,st)))return 'done';
+  if(req.includes('test')){
+    const before=req.filter(st=>st!=='test');
+    if((before.length===0||before.every(st=>taskStageDone(t,st)))&&!taskStageDone(t,'test'))return 'test';
+  }
+  return 'open';
+}
 function taskPhaseLabel(t){const ph=taskPhase(t);return ph==='done'?'DONE':ph==='test'?'TEST':'OPEN';}
 function taskSort(a,b){
   const pa=PRIORITY_ORDER[normalizePriority(a.priority)]??2,pb=PRIORITY_ORDER[normalizePriority(b.priority)]??2;
   return (pa-pb)||((b.at||0)-(a.at||0));
 }
+function stagePatchForTask(t,done){
+  const patch={};
+  taskRequiredStages(t).forEach(st=>{patch[TASK_STAGE_META[st].flag]=done;});
+  return patch;
+}
+function workPicker(id,selected){
+  const req=cleanRequiredStages(selected);
+  return `<div class="work-picker" id="${esc(id)}">${TASK_STAGE_ORDER.map(st=>{const m=TASK_STAGE_META[st];return `<label><input type="checkbox" value="${st}" ${req.includes(st)?'checked':''}> ${m.icon} ${esc(m.label)}</label>`;}).join('')}</div>`;
+}
+function readWorkPicker(id){return Array.from(document.querySelectorAll(`#${id} input:checked`)).map(x=>x.value).filter(v=>TASK_STAGE_ORDER.includes(v));}
 function normalizeTask(t){
   t=t||{};
   t.priority=normalizePriority(t.priority);
-  if(t.testDone===undefined)t.testDone=!!t.done;
-  if(t.done && !t.testDone)t.testDone=true;
+  t.requiredStages=taskRequiredStages(t);
+  TASK_STAGE_ORDER.forEach(st=>{
+    const m=TASK_STAGE_META[st];
+    if(t[m.flag]===undefined)t[m.flag]=false;
+    if(t[m.at]===undefined)t[m.at]=null;
+    if(t[m.by]===undefined)t[m.by]='';
+  });
+  if(t.done)t.requiredStages.forEach(st=>{t[TASK_STAGE_META[st].flag]=true;});
   if(t.idsAdded===undefined)t.idsAdded=!!(t.failureCanId||t.correctiveCanId);
-  ['embeddedDoneAt','softwareDoneAt','testDoneAt'].forEach(k=>{if(t[k]===undefined)t[k]=null;});
+  const done=t.requiredStages.length>0 && t.requiredStages.every(st=>!!t[TASK_STAGE_META[st].flag]);
+  t.done=done;
+  t.status=done?'DONE':(t.status==='NOT YET STARTED'?'NOT YET STARTED':'IN-PROGRESS');
   return t;
 }
 
@@ -634,7 +707,7 @@ function normalizeCommunity(p){
   p=p||{};
   p.type=COMMUNITY_TYPES.includes(String(p.type||'').toLowerCase())?String(p.type).toLowerCase():'message';
   p.priority=normalizePriority(p.priority||'normal');
-  p.team=(p.team==='sw'||p.team==='emb'||p.team==='gen')?p.team:'gen';
+  p.team=['sw','emb','gen','mech','elec'].includes(p.team)?p.team:'gen';
   p.replies=Array.isArray(p.replies)?p.replies:[];
   p.done=!!p.done;
   p.pinned=!!p.pinned;
@@ -644,7 +717,7 @@ function communitySort(a,b){return ((b.pinned?1:0)-(a.pinned?1:0))||((b.at||0)-(
 function communityTypeLabel(t){t=String(t||'message').toLowerCase();return t==='assignment'?'ASSIGNMENT':t==='decision'?'DECISION':t==='blocker'?'BLOCKER':t==='update'?'UPDATE':'MESSAGE';}
 function communityTypeIcon(t){t=String(t||'message').toLowerCase();return t==='assignment'?'🎯':t==='decision'?'✅':t==='blocker'?'⛔':t==='update'?'📡':'💬';}
 function initials(name){name=String(name||'Team').trim();const parts=name.split(/\s+/).filter(Boolean);return (parts.length>1?(parts[0][0]+parts[1][0]):name.slice(0,2)).toUpperCase();}
-function cleanMemberName(n){return String(n||'').replace(/\band\b/gi,',').split(',').map(x=>x.trim()).filter(Boolean);}
+function cleanMemberName(n){return String(n||'').replace(/and/gi,',').split(',').map(x=>x.trim()).filter(Boolean);}
 function normalizeMemberList(list){
   const out=[];const seen=new Set();
   (Array.isArray(list)?list:[]).forEach(n=>cleanMemberName(n).forEach(part=>{const k=part.toLowerCase();if(part&&!seen.has(k)){seen.add(k);out.push(part);}}));
@@ -836,6 +909,7 @@ async function removeFailure(id){
   await addNotification('Failure deleted',f?`${f.id} — ${f.event}`:id,'failure');
 }
 async function addTask(obj){
+  obj=normalizeTask(obj);
   if(useLocal){tasks.push(obj);persistLocal();render();}
   else{await setDoc(doc(tasksCol,obj.id),obj);}
   await addNotification('Task added',`${obj.text}${obj.assignee?`
@@ -896,9 +970,10 @@ async function createTaskFromCommunityPost(id,postObj=null){
     failureId:(p.linkedFailureId && !taskForFailure(p.linkedFailureId))?p.linkedFailureId:'',
     text:`[COMMUNITY] ${title}`,
     team:p.team||'gen',
+    requiredStages:defaultRequiredStagesForTeam(p.team||'gen'),
     assignee:p.assignee||'',
     priority:normalizePriority(p.priority),
-    status:'IN-PROGRESS',done:false,embeddedDone:false,softwareDone:false,testDone:false,
+    status:'IN-PROGRESS',done:false,embeddedDone:false,softwareDone:false,mechanicalDone:false,electricalDone:false,testDone:false,
     progressNotes:`From Team Community by ${p.by||'Team member'}${p.due?`\nDue: ${p.due}`:''}\n\n${p.body||''}`,
     idsAdded:false,defineName:makeDefineName({event:title}),failureCanId:'',correctiveCanId:'',by:myName,at:Date.now()
   };
@@ -948,10 +1023,10 @@ async function upsertDefineForTask(t){
   await saveDefine(text);
 }
 function taskProgressState(patch,t){
-  const emb=('embeddedDone' in patch)?patch.embeddedDone:!!t.embeddedDone;
-  const sw=('softwareDone' in patch)?patch.softwareDone:!!t.softwareDone;
-  const test=('testDone' in patch)?patch.testDone:!!t.testDone;
-  return {embeddedDone:emb,softwareDone:sw,testDone:test,done:(emb&&sw&&test),status:(emb&&sw&&test)?'DONE':'IN-PROGRESS'};
+  const merged=Object.assign({},t,patch);
+  const req=cleanRequiredStages(('requiredStages' in patch)?patch.requiredStages:taskRequiredStages(t));
+  const done=req.length>0 && req.every(st=>!!merged[TASK_STAGE_META[st].flag]);
+  return {done,status:done?'DONE':'IN-PROGRESS',requiredStages:req};
 }
 function taskDoneFromProgress(patch,t){
   return taskProgressState(patch,t).done;
@@ -972,13 +1047,17 @@ async function convertFailureToTask(fid,assignee='',teamOverride='',options={}){
     failureId:fid,
     text:`[${fid}] ${f.event}`,
     team:taskTeam,
+    requiredStages:cleanRequiredStages(options.requiredStages||['embedded','software','test']),
     assignee:who,
     priority:normalizePriority(options.priority||'normal'),
     status:alreadyDone?'DONE':'IN-PROGRESS',
     done:alreadyDone,
     embeddedDone:alreadyDone,
     softwareDone:alreadyDone,
+    mechanicalDone:alreadyDone,
+    electricalDone:alreadyDone,
     testDone:alreadyDone,
+    embeddedDoneAt:null,softwareDoneAt:null,mechanicalDoneAt:null,electricalDoneAt:null,testDoneAt:null,
     progressNotes:'',
     idsAdded:false,
     defineName:makeDefineName(f),
@@ -996,13 +1075,16 @@ async function setLinkedTaskStatus(taskId,newStatus){
   const now=Date.now();
   const patch={status:newStatus,done:(newStatus==='DONE')};
   if(newStatus==='DONE'){
-    patch.embeddedDone=true;patch.softwareDone=true;patch.testDone=true;
-    if(!t.embeddedDone){patch.embeddedDoneAt=now;patch.embeddedDoneBy=myName||'Team member';}
-    if(!t.softwareDone){patch.softwareDoneAt=now;patch.softwareDoneBy=myName||'Team member';}
-    if(!t.testDone){patch.testDoneAt=now;patch.testDoneBy=myName||'Team member';}
+    Object.assign(patch,stagePatchForTask(t,true));
+    taskRequiredStages(t).forEach(st=>{const m=TASK_STAGE_META[st];if(!t[m.flag]){patch[m.at]=now;patch[m.by]=myName||'Team member';}});
     if(!t.done){patch.doneAt=now;patch.doneBy=myName||'Team member';}
   }
-  if(newStatus!=='DONE'){patch.done=false;if(newStatus==='NOT YET STARTED'){patch.embeddedDone=false;patch.softwareDone=false;patch.testDone=false;patch.embeddedDoneAt=null;patch.softwareDoneAt=null;patch.testDoneAt=null;}}
+  if(newStatus!=='DONE'){
+    patch.done=false;
+    if(t.done || newStatus==='NOT YET STARTED'){
+      taskRequiredStages(t).forEach(st=>{const m=TASK_STAGE_META[st];patch[m.flag]=false;patch[m.at]=null;patch[m.by]='';});
+    }
+  }
   await updateTask(t.id,patch);
   if(t.failureId){
     const f=failures.find(x=>x.id===t.failureId);
@@ -1012,15 +1094,20 @@ async function setLinkedTaskStatus(taskId,newStatus){
 async function updateTaskProgress(taskId,patch){
   const t=tasks.find(x=>x.id===taskId);if(!t)return;
   const now=Date.now();
+  const nextRequired=cleanRequiredStages(('requiredStages' in patch)?patch.requiredStages:taskRequiredStages(t));
+  if(!nextRequired.length){toast('Select at least one required work section');return;}
+  patch.requiredStages=nextRequired;
+  // Hide and remove non-required work from progress and summaries.
+  TASK_STAGE_ORDER.forEach(st=>{
+    const m=TASK_STAGE_META[st];
+    if(!nextRequired.includes(st)){patch[m.flag]=false;patch[m.at]=null;patch[m.by]='';}
+  });
   const stageNotes=[];
-  [
-    ['embeddedDone','embeddedDoneAt','embeddedDoneBy','Embedded'],
-    ['softwareDone','softwareDoneAt','softwareDoneBy','Software'],
-    ['testDone','testDoneAt','testDoneBy','Test']
-  ].forEach(([flag,atKey,byKey,label])=>{
-    if(flag in patch){
-      if(patch[flag] && !t[flag]){patch[atKey]=now;patch[byKey]=myName||'Team member';stageNotes.push(label);}
-      if(!patch[flag]){patch[atKey]=null;patch[byKey]='';}
+  TASK_STAGE_ORDER.forEach(st=>{
+    const m=TASK_STAGE_META[st];
+    if(m.flag in patch){
+      if(nextRequired.includes(st) && patch[m.flag] && !t[m.flag]){patch[m.at]=now;patch[m.by]=myName||'Team member';stageNotes.push(m.label);}
+      if(!patch[m.flag]){patch[m.at]=null;patch[m.by]='';}
     }
   });
   const state=taskProgressState(patch,t);
@@ -1031,7 +1118,8 @@ async function updateTaskProgress(taskId,patch){
   await updateTask(taskId,patch);
   const nt=Object.assign({},t,patch);
   for(const label of stageNotes){
-    await addNotification(`${label} task finished`,`${nt.text}${nt.assignee?`\nAssigned to: ${nt.assignee}`:''}`, 'task');
+    await addNotification(`${label} task finished`,`${nt.text}${nt.assignee?`
+Assigned to: ${nt.assignee}`:''}`, 'task');
   }
   if(nt.idsAdded)await upsertDefineForTask(nt);
   if(t.failureId){
@@ -1272,7 +1360,9 @@ function drawSheet(f){
             <select id="assignTeam"><option value="gen">General</option><option value="sw" ${team==='sw'?'selected':''}>Software</option><option value="emb" ${team==='emb'?'selected':''}>Embedded</option></select>
             <select id="assignPriority"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option><option value="low">Low</option></select>
           </div>
-          <div class="cfgnote" style="margin:0">CAN/DEFINE IDs will stay empty until you press <b>+ ADD IDS</b> from the task card or task details.</div>
+          <label style="margin-top:10px">Required work sections</label>
+          ${workPicker('assignWork',['embedded','software','test'])}
+          <div class="cfgnote" style="margin:0">CAN/DEFINE IDs will stay empty until you press <b>+ ADD IDS</b> from the task card or task details. Only selected work sections will appear in task cards and weekly summaries.</div>
         </div>`}
         <div class="sh-actions">
           <button class="btn btn-task" id="shTask">${taskForFailure(f.id)?'▣ OPEN TASK':'＋ ASSIGN AS TASK'}</button>
@@ -1287,7 +1377,7 @@ function drawSheet(f){
       else{
         const who=$('#assignTo')?$('#assignTo').value.trim():'';
         const tm=$('#assignTeam')?$('#assignTeam').value:'';
-        convertFailureToTask(f.id,who,tm,{priority:$('#assignPriority')?$('#assignPriority').value:'normal'});closeSheet();
+        convertFailureToTask(f.id,who,tm,{priority:$('#assignPriority')?$('#assignPriority').value:'normal',requiredStages:readWorkPicker('assignWork')});closeSheet();
       }
     };
   }else{
@@ -1396,83 +1486,93 @@ function openAdd(){
 
 /* ---------- TASKS VIEW ---------- */
 function renderTasks(){
-  let scope=lsLoad('viper_task_scope','all');
   let taskFilter=lsLoad('viper_task_filter','all');
+  const stageFilters=TASK_STAGE_ORDER;
   let html=`<div class="banner"><h3>TASK BOARD</h3>
-    <p>Tasks now pass through <b>Open</b> → <b>Test</b> → <b>Done</b>. Embedded + Software moves the task to Test; Test Done closes it. Use the filters below for priority, test queue, and done work.</p></div>`;
-
-  html+=`<div class="seg-toggle" id="taskScope">
-    <button data-sc="all" class="${scope==='all'?'on':''}">ALL TEAMS</button>
-    <button data-sc="sw" class="${scope==='sw'?'on':''}">SOFTWARE</button>
-    <button data-sc="emb" class="${scope==='emb'?'on':''}">EMBEDDED</button>
-    <button data-sc="gen" class="${scope==='gen'?'on':''}">GENERAL</button>
-  </div>`;
+    <p>Each task now has selected <b>required work sections</b>. Embedded, Software, Mechanical, Electrical, and Test filters show the tasks still unchecked for that section. Sections not selected for a task do not appear and are not counted in weekly summaries.</p></div>`;
 
   html+=`<div class="task-filter" id="taskFilter">
     ${[
-      ['all','ALL'],['urgent','URGENT'],['high','HIGH'],['normal','NORMAL'],['low','LOW'],['test','TEST'],['done','DONE']
+      ['all','ALL'],['embedded','EMBEDDED'],['software','SOFTWARE'],['mechanical','MECHANICAL'],['electrical','ELECTRICAL'],['test','TEST'],['urgent','URGENT'],['high','HIGH'],['normal','NORMAL'],['low','LOW'],['done','DONE']
     ].map(([k,l])=>`<button data-tf="${k}" class="${taskFilter===k?'on':''}">${l}</button>`).join('')}
   </div>`;
 
-  html+=`<div class="add-row">
-    <input class="fin" id="taskInput" placeholder="New task…">
-    <select id="taskTeam" style="flex:0 0 96px"><option value="gen">General</option><option value="sw">Software</option><option value="emb">Embedded</option></select>
-    <select id="taskPriority" style="flex:0 0 104px"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option><option value="low">Low</option></select>
-  </div>
-  <button class="btn btn-save" id="taskAdd" style="margin-bottom:18px">+ ADD TASK</button>`;
+  html+=`<div class="week-card" style="margin-bottom:14px">
+    <div class="add-row">
+      <input class="fin" id="taskInput" placeholder="New task…">
+      <select id="taskTeam" style="flex:0 0 112px"><option value="gen">General</option><option value="sw">Software</option><option value="emb">Embedded</option><option value="mech">Mechanical</option><option value="elec">Electrical</option></select>
+      <select id="taskPriority" style="flex:0 0 104px"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option><option value="low">Low</option></select>
+    </div>
+    <label style="display:block;font-family:var(--mono);font-size:10px;color:var(--txt3);text-transform:uppercase;margin-bottom:4px">Required work sections</label>
+    ${workPicker('taskWork',['embedded','software','test'])}
+    <button class="btn btn-save" id="taskAdd" style="width:100%">+ ADD TASK</button>
+  </div>`;
 
-  let vis=tasks.map(normalizeTask).filter(t=>scope==='all'||((t.team||'gen')===scope));
-  vis=vis.filter(t=>{
-    const pri=normalizePriority(t.priority), phase=taskPhase(t);
+  const all=tasks.map(normalizeTask).sort(taskSort);
+  let vis=all.filter(t=>{
+    const pri=normalizePriority(t.priority);
     if(taskFilter==='all')return true;
+    if(stageFilters.includes(taskFilter))return taskRequires(t,taskFilter) && !taskStageDone(t,taskFilter);
     if(['urgent','high','normal','low'].includes(taskFilter))return pri===taskFilter;
-    if(taskFilter==='test')return phase==='test';
-    if(taskFilter==='done')return phase==='done';
+    if(taskFilter==='done')return taskPhase(t)==='done';
     return true;
   }).sort(taskSort);
-  const open=vis.filter(t=>!t.done && taskPhase(t)==='open');
-  const test=vis.filter(t=>!t.done && taskPhase(t)==='test');
-  const done=vis.filter(t=>taskPhase(t)==='done');
 
-  html+=`<div class="taskcol"><h3>OPEN <span class="n">${open.length}</span></h3>`;
-  if(!open.length)html+=`<div class="empty" style="padding:20px">No open tasks for this filter.</div>`;
-  open.forEach(t=>html+=taskCard(t));
-  html+=`</div>`;
-
-  html+=`<div class="taskcol"><h3>TEST <span class="n">${test.length}</span></h3>`;
-  if(!test.length)html+=`<div class="empty" style="padding:20px">No tasks waiting for test for this filter.</div>`;
-  test.forEach(t=>html+=taskCard(t));
-  html+=`</div>`;
-
-  if(done.length){
-    html+=`<div class="taskcol"><h3>DONE <span class="n">${done.length}</span></h3>`;
-    done.forEach(t=>html+=taskCard(t));
+  if(stageFilters.includes(taskFilter)){
+    const m=TASK_STAGE_META[taskFilter];
+    const undone=vis;
+    const stageDone=all.filter(t=>taskRequires(t,taskFilter) && taskStageDone(t,taskFilter)).sort(taskSort);
+    html+=`<div class="taskcol"><h3>${esc(m.label.toUpperCase())} UNDONE <span class="n">${undone.length}</span></h3>`;
+    if(!undone.length)html+=`<div class="empty" style="padding:20px">No unchecked ${esc(m.label)} tasks.</div>`;
+    undone.forEach(t=>html+=taskCard(t));
+    html+=`</div><div class="taskcol"><h3>${esc(m.label.toUpperCase())} DONE <span class="n">${stageDone.length}</span></h3>`;
+    if(!stageDone.length)html+=`<div class="empty" style="padding:20px">No ${esc(m.label)} tasks done yet.</div>`;
+    stageDone.forEach(t=>html+=taskCard(t));
     html+=`</div>`;
-  }else if(taskFilter==='done'){
-    html+=`<div class="empty" style="padding:20px">No done tasks for this filter.</div>`;
+  }else{
+    const open=vis.filter(t=>!t.done && taskPhase(t)==='open');
+    const test=vis.filter(t=>!t.done && taskPhase(t)==='test');
+    const done=vis.filter(t=>taskPhase(t)==='done');
+    html+=`<div class="taskcol"><h3>OPEN <span class="n">${open.length}</span></h3>`;
+    if(!open.length)html+=`<div class="empty" style="padding:20px">No open tasks for this filter.</div>`;
+    open.forEach(t=>html+=taskCard(t));
+    html+=`</div>`;
+    html+=`<div class="taskcol"><h3>TEST <span class="n">${test.length}</span></h3>`;
+    if(!test.length)html+=`<div class="empty" style="padding:20px">No tasks waiting for test for this filter.</div>`;
+    test.forEach(t=>html+=taskCard(t));
+    html+=`</div>`;
+    if(done.length){
+      html+=`<div class="taskcol"><h3>DONE <span class="n">${done.length}</span></h3>`;
+      done.forEach(t=>html+=taskCard(t));
+      html+=`</div>`;
+    }else if(taskFilter==='done'){
+      html+=`<div class="empty" style="padding:20px">No done tasks for this filter.</div>`;
+    }
   }
   main.innerHTML=html;
 
-  main.querySelectorAll('#taskScope button').forEach(b=>b.onclick=()=>{lsSave('viper_task_scope',b.dataset.sc);renderTasks();});
   main.querySelectorAll('#taskFilter button').forEach(b=>b.onclick=()=>{lsSave('viper_task_filter',b.dataset.tf);renderTasks();});
+  const teamSel=$('#taskTeam');
+  if(teamSel)teamSel.onchange=()=>{
+    const defaults=defaultRequiredStagesForTeam(teamSel.value);
+    TASK_STAGE_ORDER.forEach(st=>{const cb=document.querySelector(`#taskWork input[value="${st}"]`);if(cb)cb.checked=defaults.includes(st);});
+  };
   $('#taskAdd').onclick=async()=>{
     if(!myName){promptName();return;}
     const v=$('#taskInput').value.trim();if(!v){toast('Enter a task');return;}
+    const requiredStages=readWorkPicker('taskWork');if(!requiredStages.length){toast('Select at least one work section');return;}
     const obj={id:'t'+Date.now()+Math.random().toString(36).slice(2,6),text:v,
-      team:$('#taskTeam').value,priority:normalizePriority($('#taskPriority').value),
-      done:false,status:'IN-PROGRESS',embeddedDone:false,softwareDone:false,testDone:false,progressNotes:'',
-      embeddedDoneAt:null,softwareDoneAt:null,testDoneAt:null,
+      team:$('#taskTeam').value,requiredStages,priority:normalizePriority($('#taskPriority').value),
+      done:false,status:'IN-PROGRESS',embeddedDone:false,softwareDone:false,mechanicalDone:false,electricalDone:false,testDone:false,progressNotes:'',
+      embeddedDoneAt:null,softwareDoneAt:null,mechanicalDoneAt:null,electricalDoneAt:null,testDoneAt:null,
       idsAdded:false,defineName:makeDefineName({event:v}),failureCanId:'',correctiveCanId:'',by:myName,at:Date.now()};
     await addTask(obj);
     toast('Task added ✓');
   };
   $('#taskInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('#taskAdd').click();});
   main.querySelectorAll('[data-toggle]').forEach(c=>c.onclick=(e)=>{e.stopPropagation();
-    const t=tasks.find(x=>x.id===c.dataset.toggle);
-    if(!t)return;
-    const done=!t.done;
-    const patch={done,status:done?'DONE':'IN-PROGRESS',embeddedDone:done,softwareDone:done,testDone:done};
-    updateTaskProgress(t.id,patch);
+    const t=tasks.find(x=>x.id===c.dataset.toggle);if(!t)return;
+    updateTaskProgress(t.id,stagePatchForTask(t,!t.done));
   });
   main.querySelectorAll('[data-pdone]').forEach(b=>b.onclick=(e)=>{e.stopPropagation();
     const [id,k]=b.dataset.pdone.split('|');const t=tasks.find(x=>x.id===id);if(!t)return;
@@ -1484,15 +1584,18 @@ function renderTasks(){
   main.querySelectorAll('[data-tstatus]').forEach(sel=>sel.onchange=(e)=>{e.stopPropagation();setLinkedTaskStatus(sel.dataset.tstatus,sel.value);});
   main.querySelectorAll('[data-topen]').forEach(card=>card.onclick=()=>openTaskSheet(card.dataset.topen));
 }
+
 function taskCard(t){
   t=normalizeTask(t);
-  const team=(t.team==='sw'||t.team==='emb'||t.team==='gen')?t.team:'gen';
-  const lbl=team==='sw'?'SW':team==='emb'?'EMB':'GEN';
-  const emb=!!t.embeddedDone, sw=!!t.softwareDone, test=!!t.testDone;
+  const team=(['sw','emb','gen','mech','elec'].includes(t.team))?t.team:'gen';
+  const lbl=team==='sw'?'SW':team==='emb'?'EMB':team==='mech'?'MECH':team==='elec'?'ELEC':'GEN';
   const pri=normalizePriority(t.priority);
   const f=t.failureId?failures.find(x=>x.id===t.failureId):null;
   const sp=f?splitEmb(f.embedded_ui):{emb:'',ui:''};
   const phase=taskPhase(t);
+  const req=taskRequiredStages(t);
+  const workTags=req.map(st=>{const m=TASK_STAGE_META[st];const done=taskStageDone(t,st);return `<span class="work-tag ${done?'done':'need'}">${m.short} ${done?'✓':'○'}</span>`;}).join('');
+  const progress=req.map(st=>{const m=TASK_STAGE_META[st];const done=taskStageDone(t,st);return `<div class="pbar ${done?'done':''}" data-pdone="${esc(t.id)}|${m.flag}"><b>${esc(m.label.toUpperCase())} DONE</b><span>${done?'✓':'○'}</span></div>`;}).join('');
   return `<div class="taskcard ${t.done?'done':''} pri-${pri}" data-topen="${esc(t.id)}">
     <div class="tcheck" data-toggle="${esc(t.id)}">✓</div>
     <div class="tbody">
@@ -1505,11 +1608,8 @@ function taskCard(t){
         ${t.assignee?`<span class="who">👤 ${esc(t.assignee)}</span>`:''}
         <span class="who">${esc(t.by||'')}</span>
       </div>
-      <div class="task-progress">
-        <div class="pbar ${emb?'done':''}" data-pdone="${esc(t.id)}|embeddedDone"><b>EMBEDDED DONE</b><span>${emb?'✓':'○'}</span></div>
-        <div class="pbar ${sw?'done':''}" data-pdone="${esc(t.id)}|softwareDone"><b>SOFTWARE DONE</b><span>${sw?'✓':'○'}</span></div>
-        <div class="pbar ${test?'done':''}" data-pdone="${esc(t.id)}|testDone"><b>TEST DONE</b><span>${test?'✓':'○'}</span></div>
-      </div>
+      <div class="work-tags">${workTags}</div>
+      <div class="task-progress">${progress}</div>
       ${t.idsAdded?`<div class="task-can"><span>${esc(t.defineName||'NO_NAME')}</span><span>FAIL: ${esc(t.failureCanId||'—')}</span><span>CORR: ${esc(t.correctiveCanId||'—')}</span></div>`:`<button class="id-add-btn" data-addids="${esc(t.id)}">+ ADD IDS TO DEFINE</button>`}
       ${f?`<details class="task-failure-data"><summary>LINKED FAILURE DATA · ${esc(f.category)} · ${esc(f.status)}</summary><div class="mini">
         ${f.cause?`<div><b>Cause</b>${esc(previewText(f.cause,260))}</div>`:''}
@@ -1529,6 +1629,8 @@ function openTaskSheet(id){
   const f=t.failureId?failures.find(x=>x.id===t.failureId):null;
   const sp=f?splitEmb(f.embedded_ui):{emb:'',ui:''};
   const fld=(l,v)=>`<div class="field"><label>${l}</label><div class="val ${v?'':'muted'}">${v?esc(v):'— not defined —'}</div></div>`;
+  const req=taskRequiredStages(t);
+  const doneCtrls=req.map(st=>{const m=TASK_STAGE_META[st];return `<div class="ctrl"><label>${esc(m.label)} Done</label><select id="td_${st}"><option value="false" ${!t[m.flag]?'selected':''}>No</option><option value="true" ${t[m.flag]?'selected':''}>Yes</option></select></div>`;}).join('');
   const idsBlock=t.idsAdded?`
       <div class="field"><label>DEFINE Name</label><input class="fin" id="tdDefine" value="${esc(t.defineName||makeDefineName(f||{event:t.text}))}" placeholder="ENGINE_FIRE"></div>
       <div class="idgrid">
@@ -1548,11 +1650,10 @@ function openTaskSheet(id){
       <div class="ctrlgrid">
         <div class="ctrl"><label>Assigned To</label><input class="fin" id="tdAssignee" value="${esc(t.assignee||'')}"></div>
         <div class="ctrl"><label>Priority</label><select id="tdPriority"><option value="urgent" ${normalizePriority(t.priority)==='urgent'?'selected':''}>Urgent</option><option value="high" ${normalizePriority(t.priority)==='high'?'selected':''}>High</option><option value="normal" ${normalizePriority(t.priority)==='normal'?'selected':''}>Normal</option><option value="low" ${normalizePriority(t.priority)==='low'?'selected':''}>Low</option></select></div>
-        <div class="ctrl"><label>Team</label><select id="tdTeam"><option value="gen" ${t.team==='gen'?'selected':''}>General</option><option value="sw" ${t.team==='sw'?'selected':''}>Software</option><option value="emb" ${t.team==='emb'?'selected':''}>Embedded</option></select></div>
-        <div class="ctrl"><label>Embedded Done</label><select id="tdEmb"><option value="false" ${!t.embeddedDone?'selected':''}>No</option><option value="true" ${t.embeddedDone?'selected':''}>Yes</option></select></div>
-        <div class="ctrl"><label>Software Done</label><select id="tdSw"><option value="false" ${!t.softwareDone?'selected':''}>No</option><option value="true" ${t.softwareDone?'selected':''}>Yes</option></select></div>
-        <div class="ctrl"><label>Test Done</label><select id="tdTest"><option value="false" ${!t.testDone?'selected':''}>No</option><option value="true" ${t.testDone?'selected':''}>Yes</option></select></div>
+        <div class="ctrl"><label>Team</label><select id="tdTeam"><option value="gen" ${t.team==='gen'?'selected':''}>General</option><option value="sw" ${t.team==='sw'?'selected':''}>Software</option><option value="emb" ${t.team==='emb'?'selected':''}>Embedded</option><option value="mech" ${t.team==='mech'?'selected':''}>Mechanical</option><option value="elec" ${t.team==='elec'?'selected':''}>Electrical</option></select></div>
       </div>
+      <div class="field"><label>Required Work Sections</label>${workPicker('tdWork',req)}<div class="cfgnote" style="margin-top:0">Unchecked sections will disappear from the task card and will not be counted in weekly summaries.</div></div>
+      <div class="ctrlgrid">${doneCtrls}</div>
       <div class="field"><label>Task Text</label><input class="fin" id="tdText" value="${esc(t.text||'')}"></div>
       <div class="field"><label>Progress Notes</label><textarea class="fin" id="tdNotes" placeholder="Write progress, blockers, next step…">${esc(t.progressNotes||'')}</textarea></div>
       ${idsBlock}
@@ -1584,17 +1685,17 @@ function openTaskSheet(id){
   if($('#tdAddIds'))$('#tdAddIds').onclick=async()=>{await addIdsToTask(id);closeSheet();};
   $('#tdSave').onclick=async()=>{
     if(!myName){promptName();return;}
+    const requiredStages=readWorkPicker('tdWork');if(!requiredStages.length){toast('Select at least one required work section');return;}
     const patch={
       text:$('#tdText').value.trim()||t.text,
       assignee:$('#tdAssignee').value.trim(),
       priority:normalizePriority($('#tdPriority').value),
       team:$('#tdTeam').value,
-      embeddedDone:$('#tdEmb').value==='true',
-      softwareDone:$('#tdSw').value==='true',
-      testDone:$('#tdTest').value==='true',
+      requiredStages,
       progressNotes:$('#tdNotes').value,
       updatedBy:myName,updatedAt:Date.now()
     };
+    TASK_STAGE_ORDER.forEach(st=>{const m=TASK_STAGE_META[st];const el=$(`#td_${st}`);patch[m.flag]=el?el.value==='true':!!t[m.flag];});
     if(t.idsAdded){
       patch.idsAdded=true;
       patch.defineName=$('#tdDefine').value.trim();
@@ -1607,7 +1708,6 @@ function openTaskSheet(id){
 }
 
 
-
 /* ---------- COMMUNITY VIEW ---------- */
 function renderCommunity(){
   let filter=lsLoad('viper_comm_filter','all');
@@ -1617,14 +1717,14 @@ function renderCommunity(){
   html+=`<div class="comm-compose"><div class="mini-title">NEW COMMUNITY POST</div>
     <div class="comm-grid three">
       <select id="commType"><option value="message">Message</option><option value="update">Update</option><option value="assignment">Assignment</option><option value="decision">Decision</option><option value="blocker">Blocker</option></select>
-      <select id="commTeam"><option value="gen">General</option><option value="sw">Software</option><option value="emb">Embedded</option></select>
+      <select id="commTeam"><option value="gen">General</option><option value="sw">Software</option><option value="emb">Embedded</option><option value="mech">Mechanical</option><option value="elec">Electrical</option></select>
       <select id="commPriority"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option><option value="low">Low</option></select>
     </div>
     <input class="fin" id="commTitle" placeholder="Title / subject…" style="margin-bottom:9px">
     <textarea class="fin" id="commBody" placeholder="Write message, task request, blocker, update, next action…" style="min-height:92px;margin-bottom:9px"></textarea>
     ${emojiBar('commBody')}
     <div class="comm-grid">
-      <select class="fin" id="commAssignee">${teamMemberOptions('')}</select>
+      <select class="fin" id="commAssignee"><option value="">Assign to saved member (optional)</option>${teamMemberOptions('')}</select>
       <input class="fin" id="commDue" type="date" title="Due date">
     </div>
     <div class="comm-grid">
@@ -1706,14 +1806,14 @@ function weekEndSaturday(start){const d=new Date(start);d.setDate(d.getDate()+6)
 function fmtDate(d){return d.toLocaleDateString([], {month:'short',day:'2-digit',year:'numeric'});}
 function getWeekOffset(){return Number(lsLoad('viper_week_offset',0)||0);}
 function weeklyItems(start,end){return [...notifications].filter(n=>(n.at||0)>=start.getTime()&&(n.at||0)<=end.getTime()).sort((a,b)=>(a.at||0)-(b.at||0));}
-const WEEK_STAGES={embedded:{flag:'embeddedDone',at:'embeddedDoneAt',by:'embeddedDoneBy',label:'Embedded',cls:'emb',icon:'🛠️'},software:{flag:'softwareDone',at:'softwareDoneAt',by:'softwareDoneBy',label:'Software',cls:'sw',icon:'💻'},test:{flag:'testDone',at:'testDoneAt',by:'testDoneBy',label:'Test',cls:'test',icon:'🧪'}};
+const WEEK_STAGES=TASK_STAGE_META;
 function inRange(ts,start,end){return !!ts && ts>=start.getTime() && ts<=end.getTime();}
 function taskStageSummary(stage,start,end){
   const cfg=WEEK_STAGES[stage];
-  const all=tasks.map(normalizeTask);
+  const all=tasks.map(normalizeTask).filter(t=>taskRequires(t,stage));
   const done=all.filter(t=>!!t[cfg.flag]);
   const weekDone=all.filter(t=>inRange(t[cfg.at],start,end));
-  const waiting=all.filter(t=>!t[cfg.flag] && taskPhase(t)!=='done');
+  const waiting=all.filter(t=>!t[cfg.flag]);
   return {cfg,total:all.length,done,doneCount:done.length,weekDone,weekCount:weekDone.length,waiting,waitingCount:waiting.length,pct:all.length?Math.round(done.length/all.length*100):0};
 }
 function stageCard(stage,start,end){
@@ -1755,11 +1855,11 @@ function renderWeekly(){
   const byType=items.reduce((a,n)=>{const k=n.type||'update';a[k]=(a[k]||0)+1;return a;},{});
   const openNeeds=needs.filter(n=>!n.done).length;
   const allTasks=tasks.map(normalizeTask);
-  const waitingForTest=allTasks.filter(t=>taskPhase(t)==='test').length;
+  const waitingForTest=allTasks.filter(t=>taskRequires(t,'test')&&taskPhase(t)==='test').length;
   const urgentOpen=allTasks.filter(t=>!t.done && normalizePriority(t.priority)==='urgent').length;
   const unassignedOpen=allTasks.filter(t=>!t.done && !String(t.assignee||'').trim()).length;
   const doneThisWeek=allTasks.filter(t=>inRange(t.doneAt,start,end)).length;
-  let html=`<div class="banner"><h3>WEEKLY UPDATE</h3><p>Automatic team log from <b>Sunday to Saturday</b>. It now includes task-stage completion for Embedded, Software, and Test.</p></div>`;
+  let html=`<div class="banner"><h3>WEEKLY UPDATE</h3><p>Automatic team log from <b>Sunday to Saturday</b>. It now includes task-stage completion for Embedded, Software, Mechanical, Electrical, and Test.</p></div>`;
   html+=`<div class="week-nav"><button id="wkPrev">◀ PREVIOUS WEEK</button><button id="wkThis">THIS WEEK</button><button id="wkNext">NEXT WEEK ▶</button></div>`;
   html+=`<div class="week-card"><div class="week-head"><h3>WEEK SUMMARY</h3><span class="week-range">${esc(fmtDate(start))} → ${esc(fmtDate(end))}</span></div>
     <div class="statgrid" style="margin-bottom:0">
@@ -1769,7 +1869,7 @@ function renderWeekly(){
       <div class="scard grey"><div class="big">${openNeeds}</div><div class="lbl">Open needs</div></div>
     </div></div>`;
   html+=`<div class="week-card"><div class="week-head"><h3>TASK STAGE SUMMARY</h3><span class="week-range">Click any section</span></div>
-    <div class="week-stage-grid">${stageCard('embedded',start,end)}${stageCard('software',start,end)}${stageCard('test',start,end)}</div>
+    <div class="week-stage-grid">${TASK_STAGE_ORDER.map(st=>stageCard(st,start,end)).join('')}</div>
     <div class="week-insights"><div class="week-insight"><b>${waitingForTest}</b><span>Waiting for test</span></div><div class="week-insight"><b>${urgentOpen}</b><span>Urgent open tasks</span></div><div class="week-insight"><b>${unassignedOpen}</b><span>Open without assignee</span></div><div class="week-insight"><b>${allTasks.filter(t=>!t.done).length}</b><span>Total open tasks</span></div></div>
   </div>`;
   html+=`<div class="week-card"><div class="week-head"><h3>FAILURE PROGRESS NOW</h3><span class="week-range">Current status</span></div>
@@ -1789,8 +1889,8 @@ function renderWeekly(){
   $('#wkNext').onclick=()=>{lsSave('viper_week_offset',offset+1);renderWeekly();};
   main.querySelectorAll('[data-wstage]').forEach(c=>c.onclick=()=>openWeeklyStageSheet(c.dataset.wstage,start.getTime(),end.getTime()));
   $('#wkCopy').onclick=async()=>{
-    const emb=taskStageSummary('embedded',start,end), sw=taskStageSummary('software',start,end), tst=taskStageSummary('test',start,end);
-    const lines=[`VIPER Weekly Update (${fmtDate(start)} - ${fmtDate(end)})`,`Total updates: ${items.length}`,`Task changes: ${byType.task||0}`,`Tasks done this week: ${doneThisWeek}`,`Embedded: ${emb.doneCount}/${emb.total} (${emb.weekCount} this week)`,`Software: ${sw.doneCount}/${sw.total} (${sw.weekCount} this week)`,`Test: ${tst.doneCount}/${tst.total} (${tst.weekCount} this week)`,`Waiting for test: ${waitingForTest}`,`Urgent open tasks: ${urgentOpen}`,`Open needs: ${openNeeds}`,'',...items.map(n=>`- [${notifTime(n.at)}] ${n.title}: ${n.message} (${n.by||'Team'})`)];
+    const stageLines=TASK_STAGE_ORDER.map(st=>{const s=taskStageSummary(st,start,end),m=TASK_STAGE_META[st];return `${m.label}: ${s.doneCount}/${s.total} (${s.weekCount} this week)`;});
+    const lines=[`VIPER Weekly Update (${fmtDate(start)} - ${fmtDate(end)})`,`Total updates: ${items.length}`,`Task changes: ${byType.task||0}`,`Tasks done this week: ${doneThisWeek}`,...stageLines,`Waiting for test: ${waitingForTest}`,`Urgent open tasks: ${urgentOpen}`,`Open needs: ${openNeeds}`,'',...items.map(n=>`- [${notifTime(n.at)}] ${n.title}: ${n.message} (${n.by||'Team'})`)];
     try{await navigator.clipboard.writeText(lines.join('\n'));toast('Weekly report copied ✓');}catch{toast('Copy not available');}
   };
 }
