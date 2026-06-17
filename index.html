@@ -430,6 +430,28 @@ textarea.fin{resize:vertical;min-height:80px;line-height:1.5;font-size:13px;}
 .task-filter button{flex:0 0 auto;padding:8px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--panel);color:var(--txt2);font-family:var(--mono);font-size:10px;cursor:pointer;}
 .task-filter button.on{background:var(--amber);border-color:var(--amber);color:#1a1200;font-weight:700;}
 
+
+/* ---- Progress curves ---- */
+.progress-chart{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-top:10px;overflow:hidden;}
+.progress-chart-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px;}
+.progress-chart-title b{font-family:var(--mono);font-size:11px;color:var(--amber);letter-spacing:.7px;text-transform:uppercase;}
+.progress-chart-title span{font-family:var(--mono);font-size:9px;color:var(--txt3);}
+.progress-svg{width:100%;height:210px;display:block;background:linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,.004));border:1px solid var(--line);border-radius:11px;}
+.progress-legend{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px;}
+.progress-legend span{font-family:var(--mono);font-size:9px;color:var(--txt2);border:1px solid var(--line2);background:var(--bg);border-radius:15px;padding:4px 8px;display:flex;align-items:center;gap:5px;}
+.progress-legend i{width:9px;height:9px;border-radius:50%;display:inline-block;}
+.progress-insight-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px;}
+.progress-insight{background:rgba(255,255,255,.025);border:1px solid var(--line);border-radius:11px;padding:10px;}
+.progress-insight b{display:block;font-family:var(--mono);font-size:17px;color:var(--amber);line-height:1.1;}.progress-insight span{display:block;font-family:var(--mono);font-size:9px;color:var(--txt3);text-transform:uppercase;margin-top:5px;line-height:1.35;}
+.progress-periods{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin-top:10px;padding-bottom:6px;}
+.progress-periods::-webkit-scrollbar{display:none;}
+.period-pill{flex:0 0 auto;min-width:72px;border:1px solid var(--line2);border-radius:10px;background:var(--bg);padding:7px 8px;font-family:var(--mono);font-size:9px;color:var(--txt2);cursor:pointer;}
+.period-pill b{display:block;color:var(--txt);font-size:14px;line-height:1;margin-bottom:4px;}.period-pill.weak{border-color:var(--red-dim);background:rgba(255,92,92,.06);}.period-pill.best{border-color:var(--green-dim);background:rgba(57,217,138,.06);}
+.source-pill{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:5px;border:1px solid var(--line2);background:var(--panel2);color:var(--txt2);}
+.source-pill.failure{color:var(--amber);border-color:var(--amber-dim);background:rgba(255,176,0,.07);}
+.source-pill.manual{color:var(--txt3);}
+@media(max-width:520px){.progress-insight-grid{grid-template-columns:1fr}.progress-svg{height:190px}.period-pill{min-width:64px}}
+
 /* ---- Lock screen ---- */
 .lock{position:fixed;inset:0;z-index:300;background:var(--bg);
   background-image:radial-gradient(circle at 50% 30%,#13202e 0,transparent 55%);
@@ -590,6 +612,14 @@ let myName = localStorage.getItem('viper_name') || '';
 let notifReadAt = Number(localStorage.getItem('viper_notif_read_at') || 0);
 
 const STATUSES = ["NOT YET STARTED","DEFINED","IN-PROGRESS","DONE","NOT APPLICABLE"];
+const FAILURE_PROGRESS_STATUSES = ["DEFINED","IN-PROGRESS","DONE","NOT YET STARTED"];
+const FAILURE_STATUS_META = {
+  "DONE":{label:"Done",short:"DONE",icon:"✅",color:"#39d98a",cls:"green"},
+  "IN-PROGRESS":{label:"In Progress",short:"PROG",icon:"⏳",color:"#ffb000",cls:"amber"},
+  "DEFINED":{label:"Defined",short:"DEF",icon:"📌",color:"#4aa8ff",cls:"blue"},
+  "NOT YET STARTED":{label:"Not Started",short:"OPEN",icon:"○",color:"#8b9bb0",cls:"grey"},
+  "NOT APPLICABLE":{label:"Not Applicable",short:"N/A",icon:"—",color:"#5d6e82",cls:"grey"}
+};
 const CATEGORIES = ["Engine","Electrical","Fuel","Hydraulic","Flight Controls","Information"];
 const CAT_COLOR = {Engine:"#ff5c5c",Electrical:"#4aa8ff",Fuel:"#ffb000",Hydraulic:"#39d98a","Flight Controls":"#b58cff",Information:"#8b9bb0"};
 const PRIORITY_ORDER = {urgent:0,high:1,normal:2,low:3};
@@ -877,8 +907,16 @@ async function refreshFirestoreSeedIfNeeded(snap){
       const old=existing[seed.id]||{};
       batch.set(doc(failuresCol,seed.id),{
         ...seed,
+        status:old.status||seed.status,
         assignee:old.assignee||seed.assignee||'',
         team:old.team||seed.team||'',
+        statusHistory:old.statusHistory||seed.statusHistory||[],
+        statusChangedAt:old.statusChangedAt||seed.statusChangedAt||null,
+        statusChangedBy:old.statusChangedBy||seed.statusChangedBy||'',
+        doneAt:old.doneAt||seed.doneAt||null,
+        inProgressAt:old.inProgressAt||seed.inProgressAt||null,
+        definedAt:old.definedAt||seed.definedAt||null,
+        notStartedAt:old.notStartedAt||seed.notStartedAt||null,
         updatedBy:old.updatedBy||'excel-seed',
         updatedAt:old.updatedAt||Date.now()
       });
@@ -905,11 +943,27 @@ function sortFailures(){
 
 /* writes */
 async function updateFailure(id,patch){
-  const f=failures.find(x=>x.id===id);const before=f?f.status:'';if(f)Object.assign(f,patch);
+  const f=failures.find(x=>x.id===id);
+  const before=f?f.status:'';
+  const statusChanged=f && ('status' in patch) && patch.status!==before;
+  if(statusChanged){
+    const now=Date.now();
+    const by=patch.updatedBy||myName||'Team member';
+    const hist=Array.isArray(f.statusHistory)?[...f.statusHistory]:[];
+    hist.push({status:patch.status,from:before,at:now,by});
+    patch.statusHistory=hist.slice(-250);
+    patch.statusChangedAt=now;
+    patch.statusChangedBy=by;
+    if(patch.status==='DONE')patch.doneAt=patch.doneAt||now;
+    if(patch.status==='IN-PROGRESS')patch.inProgressAt=patch.inProgressAt||now;
+    if(patch.status==='DEFINED')patch.definedAt=patch.definedAt||now;
+    if(patch.status==='NOT YET STARTED')patch.notStartedAt=patch.notStartedAt||now;
+  }
+  if(f)Object.assign(f,patch);
   if(useLocal){persistLocal();render();}
   else{const ref=doc(failuresCol,f._docid||id);await updateDoc(ref,patch);}
   const name=f?`${f.id} — ${f.event}`:id;
-  const msg=('status' in patch && patch.status!==before)?`Status changed to ${patch.status}.`:'Failure details were updated.';
+  const msg=(statusChanged)?`Status changed from ${before||'—'} to ${patch.status}.`:'Failure details were updated.';
   await addNotification('Failure updated',`${name}
 ${msg}`,'failure');
 }
@@ -1508,6 +1562,7 @@ function renderTasks(){
   let workFilter=lsLoad('viper_task_work_filter',null);
   let priorityFilter=lsLoad('viper_task_priority_filter',null);
   let stateFilter=lsLoad('viper_task_state_filter',null);
+  let sourceFilter=lsLoad('viper_task_source_filter',null);
 
   if(!workFilter){
     workFilter=stageFilters.includes(legacy)?legacy:'all';
@@ -1521,21 +1576,28 @@ function renderTasks(){
     stateFilter=legacy==='done'?'done':'notdone';
     lsSave('viper_task_state_filter',stateFilter);
   }
+  if(!sourceFilter){
+    sourceFilter=legacy==='failures'?'failures':'all';
+    lsSave('viper_task_source_filter',sourceFilter);
+  }
   if(!stageFilters.includes(workFilter) && workFilter!=='all')workFilter='all';
   if(!priorityFilters.includes(priorityFilter) && priorityFilter!=='all')priorityFilter='all';
   if(!['all','done','notdone'].includes(stateFilter))stateFilter='notdone';
+  if(!['all','failures','manual'].includes(sourceFilter))sourceFilter='all';
 
   const workButtons=[['all','ALL WORK'],['embedded','EMBEDDED'],['software','SOFTWARE'],['mechanical','MECHANICAL'],['electrical','ELECTRICAL'],['test','TEST']];
   const priorityButtons=[['all','ALL PRIORITY'],['urgent','URGENT'],['high','HIGH'],['normal','NORMAL'],['low','LOW']];
   const stateButtons=[['notdone','NOT DONE'],['done','DONE'],['all','ALL STATE']];
+  const sourceButtons=[['all','ALL TASKS'],['failures','FAILURES'],['manual','MANUAL / COMMUNITY']];
   const buttonRow=(title,id,items,current,attr)=>`<div style="margin-bottom:10px"><div style="font-family:var(--mono);font-size:9px;color:var(--txt3);letter-spacing:.8px;text-transform:uppercase;margin:0 0 5px 3px">${title}</div><div class="task-filter" id="${id}">${items.map(([k,l])=>`<button data-${attr}="${k}" class="${current===k?'on':''}">${l}</button>`).join('')}</div></div>`;
 
   let html=`<div class="banner"><h3>TASK BOARD</h3>
-    <p>Use the three filters together: choose a work section, then priority, then Done/Not Done. For example, <b>Embedded + Urgent + Not Done</b> shows urgent tasks where Embedded work is required and still unchecked.</p></div>`;
+    <p>Use the filters together: choose work section, priority, Done/Not Done, and origin. Example: <b>Embedded + Urgent + Not Done + Failures</b> shows urgent linked-failure tasks where Embedded work is still unchecked.</p></div>`;
 
   html+=buttonRow('Work section filter','taskWorkFilter',workButtons,workFilter,'twf');
   html+=buttonRow('Priority filter','taskPriorityFilter',priorityButtons,priorityFilter,'tpf');
   html+=buttonRow('Completion filter','taskStateFilter',stateButtons,stateFilter,'tsf');
+  html+=buttonRow('Origin filter','taskSourceFilter',sourceButtons,sourceFilter,'tsrc');
 
   html+=`<div class="week-card" style="margin-bottom:14px">
     <div class="add-row">
@@ -1551,6 +1613,7 @@ function renderTasks(){
   const all=tasks.map(normalizeTask).sort(taskSort);
   const priorityOk=t=>priorityFilter==='all'||normalizePriority(t.priority)===priorityFilter;
   const workOk=t=>workFilter==='all'||taskRequires(t,workFilter);
+  const sourceOk=t=>sourceFilter==='all'||(sourceFilter==='failures'?!!t.failureId:!t.failureId);
   const completionOk=t=>{
     if(workFilter!=='all' && stageFilters.includes(workFilter)){
       if(stateFilter==='done')return taskStageDone(t,workFilter);
@@ -1561,12 +1624,13 @@ function renderTasks(){
     if(stateFilter==='notdone')return taskPhase(t)!=='done';
     return true;
   };
-  let vis=all.filter(t=>priorityOk(t)&&workOk(t)&&completionOk(t)).sort(taskSort);
+  let vis=all.filter(t=>priorityOk(t)&&workOk(t)&&completionOk(t)&&sourceOk(t)).sort(taskSort);
 
   const workLabel=workFilter==='all'?'All work':TASK_STAGE_META[workFilter].label;
   const priorityLabelText=priorityFilter==='all'?'All priorities':priorityLabel(priorityFilter);
   const stateLabelText=stateFilter==='notdone'?'Not Done':stateFilter==='done'?'Done':'All states';
-  html+=`<div class="cfgnote" style="margin:0 0 12px"><b>Active filters:</b> ${esc(workLabel)} / ${esc(priorityLabelText)} / ${esc(stateLabelText)} — <b>${vis.length}</b> result${vis.length===1?'':'s'}.</div>`;
+  const sourceLabelText=sourceFilter==='failures'?'From Failures':sourceFilter==='manual'?'Manual / Community':'All origins';
+  html+=`<div class="cfgnote" style="margin:0 0 12px"><b>Active filters:</b> ${esc(workLabel)} / ${esc(priorityLabelText)} / ${esc(stateLabelText)} / ${esc(sourceLabelText)} — <b>${vis.length}</b> result${vis.length===1?'':'s'}.</div>`;
 
   if(workFilter!=='all' && stageFilters.includes(workFilter)){
     const m=TASK_STAGE_META[workFilter];
@@ -1612,6 +1676,7 @@ function renderTasks(){
   main.querySelectorAll('#taskWorkFilter button').forEach(b=>b.onclick=()=>{lsSave('viper_task_work_filter',b.dataset.twf);renderTasks();});
   main.querySelectorAll('#taskPriorityFilter button').forEach(b=>b.onclick=()=>{lsSave('viper_task_priority_filter',b.dataset.tpf);renderTasks();});
   main.querySelectorAll('#taskStateFilter button').forEach(b=>b.onclick=()=>{lsSave('viper_task_state_filter',b.dataset.tsf);renderTasks();});
+  main.querySelectorAll('#taskSourceFilter button').forEach(b=>b.onclick=()=>{lsSave('viper_task_source_filter',b.dataset.tsrc);renderTasks();});
   const teamSel=$('#taskTeam');
   if(teamSel)teamSel.onchange=()=>{
     const defaults=defaultRequiredStagesForTeam(teamSel.value);
@@ -1664,6 +1729,7 @@ function taskCard(t){
         <span class="pill ${esc(team)}">${lbl}</span>
         <span class="priority-pill ${pri}">${priorityLabel(pri)}</span>
         <span class="task-phase ${phase}">${taskPhaseLabel(t)}</span>
+        ${t.failureId?`<span class="source-pill failure">FAILURE</span>`:`<span class="source-pill manual">MANUAL</span>`}
         ${t.failureId?`<select class="task-status" data-tstatus="${esc(t.id)}">${STATUSES.map(s=>`<option ${((t.status||'IN-PROGRESS')===s)?'selected':''}>${s}</option>`).join('')}</select>`:''}
         ${t.assignee?`<span class="who">👤 ${esc(t.assignee)}</span>`:''}
         <span class="who">${esc(t.by||'')}</span>
@@ -1943,6 +2009,181 @@ function stageFormulaText(stageData){
   const parts=stageData.filter(s=>s.weekCount>0).map(s=>`${s.cfg.label} ${s.weekCount}`);
   return parts.length?parts.join(' + '):'No task work completed this week yet';
 }
+function periodStartLabel(d){return d.toLocaleDateString([], {month:'short',day:'2-digit'});}
+function progressPeriods(mode,year){
+  const now=new Date();
+  const currentYear=now.getFullYear();
+  const periods=[];
+  if(mode==='monthly'){
+    const lastMonth=(year===currentYear)?now.getMonth():11;
+    for(let m=0;m<=lastMonth;m++){
+      const start=new Date(year,m,1,0,0,0,0);
+      const end=new Date(year,m+1,0,23,59,59,999);
+      periods.push({label:start.toLocaleDateString([], {month:'short'}),start,end});
+    }
+  }else{
+    const yStart=new Date(year,0,1,0,0,0,0);
+    const yEnd=(year===currentYear)?now:new Date(year,11,31,23,59,59,999);
+    let cur=weekStartSunday(yStart);let i=1;
+    while(cur.getTime()<=yEnd.getTime()){
+      const rawEnd=weekEndSaturday(cur);
+      const start=new Date(Math.max(cur.getTime(),yStart.getTime()));
+      const end=new Date(Math.min(rawEnd.getTime(),yEnd.getTime()));
+      periods.push({label:`W${i}`,start,end,detail:`${periodStartLabel(start)}–${periodStartLabel(end)}`});
+      cur=new Date(cur.getTime());cur.setDate(cur.getDate()+7);i++;
+    }
+  }
+  return periods;
+}
+function progressSeries(mode='monthly',year=(new Date()).getFullYear()){
+  const periods=progressPeriods(mode,year);
+  const datasets=TASK_STAGE_ORDER.map(stage=>{
+    const cfg=TASK_STAGE_META[stage];
+    return {stage,cfg,values:periods.map(p=>tasks.map(normalizeTask).filter(t=>taskRequires(t,stage)&&inRange(t[cfg.at],p.start,p.end)).length)};
+  });
+  const totals=periods.map((p,i)=>datasets.reduce((s,d)=>s+(d.values[i]||0),0));
+  return {mode,year,periods,datasets,totals};
+}
+function progressWeakness(series){
+  const valid=series.periods.map((p,i)=>({p,i,total:series.totals[i]||0}));
+  if(!valid.length)return {weak:'—',best:'—',weakTotal:0,bestTotal:0};
+  const min=Math.min(...valid.map(x=>x.total));
+  const max=Math.max(...valid.map(x=>x.total));
+  const weak=valid.find(x=>x.total===min),best=valid.find(x=>x.total===max);
+  return {weak:weak?(weak.p.detail||weak.p.label):'—',best:best?(best.p.detail||best.p.label):'—',weakTotal:min,bestTotal:max,weakIndex:weak?weak.i:-1,bestIndex:best?best.i:-1};
+}
+function progressChartSvg(series){
+  const W=620,H=220,padL=34,padR=18,padT=18,padB=34;
+  const plotW=W-padL-padR,plotH=H-padT-padB;
+  const maxVal=Math.max(1,...series.datasets.flatMap(d=>d.values));
+  const n=Math.max(1,series.periods.length);
+  const colors={embedded:'#b58cff',software:'#4aa8ff',mechanical:'#ffb000',electrical:'#39d98a',test:'#ff5c5c'};
+  const x=i=>padL+(n===1?plotW/2:(i/(n-1))*plotW);
+  const y=v=>padT+plotH-(v/maxVal)*plotH;
+  const grid=[0,.25,.5,.75,1].map(r=>{const yy=padT+plotH-(r*plotH);const val=Math.round(r*maxVal);return `<line x1="${padL}" y1="${yy}" x2="${W-padR}" y2="${yy}" stroke="rgba(139,155,176,.16)"/><text x="4" y="${yy+4}" fill="#8b9bb0" font-size="10" font-family="monospace">${val}</text>`;}).join('');
+  const labelStep=series.mode==='weekly'?Math.max(1,Math.ceil(n/8)):1;
+  const xlabels=series.periods.map((p,i)=>i%labelStep===0||i===n-1?`<text x="${x(i)}" y="${H-10}" fill="#8b9bb0" font-size="9" font-family="monospace" text-anchor="middle">${esc(p.label)}</text>`:'').join('');
+  const lines=series.datasets.map(d=>{
+    const pts=d.values.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    const dots=(series.mode==='monthly'?d.values.map((v,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.8" fill="${colors[d.stage]}"/>`).join(''):'');
+    return `<polyline points="${pts}" fill="none" stroke="${colors[d.stage]}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>${dots}`;
+  }).join('');
+  return `<svg class="progress-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${series.mode} progress curves">${grid}<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H-padB}" stroke="rgba(139,155,176,.3)"/><line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="rgba(139,155,176,.3)"/>${lines}${xlabels}</svg>`;
+}
+function progressLegend(){
+  const colors={embedded:'#b58cff',software:'#4aa8ff',mechanical:'#ffb000',electrical:'#39d98a',test:'#ff5c5c'};
+  return `<div class="progress-legend">${TASK_STAGE_ORDER.map(st=>`<span><i style="background:${colors[st]}"></i>${esc(TASK_STAGE_META[st].label)}</span>`).join('')}</div>`;
+}
+function progressPeriodPills(series,limit=14){
+  const w=progressWeakness(series);
+  const start=Math.max(0,series.periods.length-limit);
+  return `<div class="progress-periods">${series.periods.slice(start).map((p,j)=>{const i=start+j;const cls=i===w.weakIndex?' weak':i===w.bestIndex?' best':'';const title=p.detail||p.label;return `<div class="period-pill${cls}" data-prog-period="${series.mode}|${i}|${series.year}"><b>${series.totals[i]||0}</b>${esc(series.mode==='weekly'?`${p.label} · ${title}`:title)}</div>`;}).join('')}</div>`;
+}
+function renderProgressCurveCard(mode,year){
+  const series=progressSeries(mode,year), w=progressWeakness(series);
+  const title=mode==='weekly'?'Weekly Section Progress Curve':'Monthly Section Progress Curve';
+  const sub=mode==='weekly'?'each point = completed work sections in one week':'each point = completed work sections in one month';
+  return `<div class="week-card"><div class="week-head"><h3>${title.toUpperCase()}</h3><span class="week-range">${year}</span></div>
+    <div class="progress-chart"><div class="progress-chart-title"><b>${esc(title)}</b><span>${esc(sub)}</span></div>${progressChartSvg(series)}${progressLegend()}</div>
+    <div class="progress-insight-grid"><div class="progress-insight"><b>${esc(w.best)}</b><span>Best ${mode==='weekly'?'week':'month'} · ${w.bestTotal} done</span></div><div class="progress-insight"><b>${esc(w.weak)}</b><span>Lowest progress / defect ${mode==='weekly'?'week':'month'} · ${w.weakTotal} done</span></div></div>
+    ${progressPeriodPills(series,mode==='weekly'?12:12)}
+  </div>`;
+}
+function openProgressPeriodSheet(mode,index,year){
+  const series=progressSeries(mode,Number(year)||new Date().getFullYear());
+  const p=series.periods[Number(index)];if(!p)return;
+  const rows=[];
+  TASK_STAGE_ORDER.forEach(st=>{
+    const cfg=TASK_STAGE_META[st];
+    tasks.map(normalizeTask).filter(t=>taskRequires(t,st)&&inRange(t[cfg.at],p.start,p.end)).forEach(t=>rows.push({st,cfg,t,at:t[cfg.at]||0,by:t[cfg.by]||t.by||'Team'}));
+  });
+  rows.sort((a,b)=>(b.at||0)-(a.at||0));
+  const breakdown=TASK_STAGE_ORDER.map(st=>{const cfg=TASK_STAGE_META[st];const n=rows.filter(r=>r.st===st).length;return `<div class="week-stage-card ${cfg.cls}" style="cursor:default"><div class="week-stage-title"><span>${cfg.icon} ${cfg.label}</span><span>${n}</span></div><div class="week-stage-big">${n}</div><div class="week-stage-sub">completed in this ${mode==='weekly'?'week':'month'}</div></div>`;}).join('');
+  $('#sheetContent').innerHTML=`<div class="sh-head"><div class="top"><span class="cid">${esc(mode.toUpperCase())}</span><h2>${esc(p.detail||p.label)} Progress Summary</h2><button class="sh-close" id="shClose">✕</button></div></div><div class="sh-body">
+    <div class="banner"><h3>PERIOD SUMMARY</h3><p>Total completed work sections: <b>${rows.length}</b>. Use this to see weak/defect periods and what was actually completed.</p></div>
+    <div class="week-stage-grid" style="margin-bottom:14px">${breakdown}</div>
+    <div class="banner"><h3>COMPLETION DETAILS</h3><p>Every work-section completion recorded in this period.</p></div>
+    <div class="task-summary-list">${rows.length?rows.map(r=>`<div class="task-summary-item"><div class="name">${r.cfg.icon} ${esc(r.cfg.label)} Done — ${esc(r.t.text||'Task')}</div><div class="meta"><span>${esc(priorityLabel(r.t.priority))}</span><span>${esc(taskPhaseLabel(r.t))}</span><span>${r.t.failureId?'From failure':'Manual / community'}</span><span>👤 ${esc(r.t.assignee||'Unassigned')}</span><span>${esc(notifTime(r.at))}</span><span>By: ${esc(r.by)}</span></div></div>`).join(''):`<div class="empty" style="padding:16px">No completed work sections in this period.</div>`}</div>
+  </div>`;
+  $('#overlay').classList.add('open');$('#sheet').classList.add('open');$('#shClose').onclick=closeSheet;
+}
+
+function failureStatusEvents(){
+  const events=[];
+  failures.forEach(f=>{
+    const hist=Array.isArray(f.statusHistory)?f.statusHistory:[];
+    if(hist.length){
+      hist.forEach(h=>{if(h&&h.status&&h.at)events.push({failure:f,status:h.status,from:h.from||'',at:h.at,by:h.by||f.statusChangedBy||f.updatedBy||'Team'});});
+      return;
+    }
+    const status=String(f.status||'').toUpperCase();
+    const statusAt=f.statusChangedAt || (status==='DONE'?f.doneAt:status==='IN-PROGRESS'?f.inProgressAt:status==='DEFINED'?f.definedAt:status==='NOT YET STARTED'?f.notStartedAt:null);
+    if(statusAt)events.push({failure:f,status:f.status,from:'',at:statusAt,by:f.statusChangedBy||f.updatedBy||'Team'});
+  });
+  return events.sort((a,b)=>(b.at||0)-(a.at||0));
+}
+function failureProgressSeries(mode='monthly',year=(new Date()).getFullYear()){
+  const periods=progressPeriods(mode,year);
+  const events=failureStatusEvents();
+  const datasets=FAILURE_PROGRESS_STATUSES.map(status=>{
+    const meta=FAILURE_STATUS_META[status]||{label:status,color:'#8b9bb0'};
+    return {status,meta,values:periods.map(p=>events.filter(e=>e.status===status&&inRange(e.at,p.start,p.end)).length)};
+  });
+  const totals=periods.map((p,i)=>datasets.reduce((sum,d)=>sum+(d.values[i]||0),0));
+  return {mode,year,periods,datasets,totals,events};
+}
+function failureProgressChartSvg(series){
+  const W=620,H=220,padL=34,padR=18,padT=18,padB=34;
+  const plotW=W-padL-padR,plotH=H-padT-padB;
+  const maxVal=Math.max(1,...series.datasets.flatMap(d=>d.values));
+  const n=Math.max(1,series.periods.length);
+  const x=i=>padL+(n===1?plotW/2:(i/(n-1))*plotW);
+  const y=v=>padT+plotH-(v/maxVal)*plotH;
+  const grid=[0,.25,.5,.75,1].map(r=>{const yy=padT+plotH-(r*plotH);const val=Math.round(r*maxVal);return `<line x1="${padL}" y1="${yy}" x2="${W-padR}" y2="${yy}" stroke="rgba(139,155,176,.16)"/><text x="4" y="${yy+4}" fill="#8b9bb0" font-size="10" font-family="monospace">${val}</text>`;}).join('');
+  const labelStep=series.mode==='weekly'?Math.max(1,Math.ceil(n/8)):1;
+  const xlabels=series.periods.map((p,i)=>i%labelStep===0||i===n-1?`<text x="${x(i)}" y="${H-10}" fill="#8b9bb0" font-size="9" font-family="monospace" text-anchor="middle">${esc(p.label)}</text>`:'').join('');
+  const lines=series.datasets.map(d=>{
+    const pts=d.values.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    const dots=(series.mode==='monthly'?d.values.map((v,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.8" fill="${d.meta.color}"/>`).join(''):'');
+    return `<polyline points="${pts}" fill="none" stroke="${d.meta.color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>${dots}`;
+  }).join('');
+  return `<svg class="progress-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${series.mode} failure progress curves">${grid}<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H-padB}" stroke="rgba(139,155,176,.3)"/><line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="rgba(139,155,176,.3)"/>${lines}${xlabels}</svg>`;
+}
+function failureProgressLegend(){
+  return `<div class="progress-legend">${FAILURE_PROGRESS_STATUSES.map(st=>{const m=FAILURE_STATUS_META[st];return `<span><i style="background:${m.color}"></i>${esc(m.icon)} ${esc(m.label)}</span>`;}).join('')}</div>`;
+}
+function failureProgressWeakness(series){return progressWeakness(series);}
+function failureProgressPeriodPills(series,limit=14){
+  const w=failureProgressWeakness(series);
+  const start=Math.max(0,series.periods.length-limit);
+  return `<div class="progress-periods">${series.periods.slice(start).map((p,j)=>{const i=start+j;const cls=i===w.weakIndex?' weak':i===w.bestIndex?' best':'';const title=p.detail||p.label;return `<div class="period-pill${cls}" data-fail-prog-period="${series.mode}|${i}|${series.year}"><b>${series.totals[i]||0}</b>${esc(series.mode==='weekly'?`${p.label} · ${title}`:title)}</div>`;}).join('')}</div>`;
+}
+function renderFailureProgressCurveCard(mode,year){
+  const series=failureProgressSeries(mode,year), w=failureProgressWeakness(series);
+  const title=mode==='weekly'?'Weekly Failure Progress Curve':'Monthly Failure Progress Curve';
+  const sub=mode==='weekly'?'each point = failure status changes in one week':'each point = failure status changes in one month';
+  const totalEvents=series.totals.reduce((a,b)=>a+b,0);
+  return `<div class="week-card"><div class="week-head"><h3>${title.toUpperCase()}</h3><span class="week-range">${year}</span></div>
+    <div class="progress-chart"><div class="progress-chart-title"><b>${esc(title)}</b><span>${esc(sub)}</span></div>${failureProgressChartSvg(series)}${failureProgressLegend()}</div>
+    <div class="progress-insight-grid"><div class="progress-insight"><b>${esc(w.best)}</b><span>Best ${mode==='weekly'?'week':'month'} · ${w.bestTotal} failure updates</span></div><div class="progress-insight"><b>${esc(w.weak)}</b><span>Lowest / defect ${mode==='weekly'?'week':'month'} · ${w.weakTotal} failure updates</span></div></div>
+    <div class="progress-insight-grid"><div class="progress-insight"><b>${totalEvents}</b><span>Total failure status updates in ${year}</span></div><div class="progress-insight"><b>${failures.filter(f=>f.status==='DONE').length}/${failures.length}</b><span>Current completed failures</span></div></div>
+    ${failureProgressPeriodPills(series,mode==='weekly'?12:12)}
+  </div>`;
+}
+function openFailureProgressPeriodSheet(mode,index,year){
+  const series=failureProgressSeries(mode,Number(year)||new Date().getFullYear());
+  const p=series.periods[Number(index)];if(!p)return;
+  const events=failureStatusEvents().filter(e=>inRange(e.at,p.start,p.end)).sort((a,b)=>(b.at||0)-(a.at||0));
+  const breakdown=FAILURE_PROGRESS_STATUSES.map(st=>{const m=FAILURE_STATUS_META[st];const n=events.filter(e=>e.status===st).length;return `<div class="scard ${m.cls}" style="cursor:default"><div class="big">${n}</div><div class="lbl">${esc(m.label)}</div></div>`;}).join('');
+  $('#sheetContent').innerHTML=`<div class="sh-head"><div class="top"><span class="cid">FAILURES</span><h2>${esc(p.detail||p.label)} Failure Progress</h2><button class="sh-close" id="shClose">✕</button></div></div><div class="sh-body">
+    <div class="banner"><h3>FAILURE PERIOD SUMMARY</h3><p>Total failure status updates: <b>${events.length}</b>. This helps identify weak weeks/months where fewer failures moved forward.</p></div>
+    <div class="statgrid" style="margin-bottom:14px">${breakdown}</div>
+    <div class="banner"><h3>STATUS CHANGE DETAILS</h3><p>Every failure status movement recorded in this period.</p></div>
+    <div class="task-summary-list">${events.length?events.map(e=>{const m=FAILURE_STATUS_META[e.status]||{icon:'',label:e.status};const f=e.failure||{};return `<div class="task-summary-item"><div class="name">${esc(m.icon)} ${esc(f.id||'')} — ${esc(f.event||'Failure')}</div><div class="meta"><span>${esc(e.from?`${e.from} → ${e.status}`:e.status)}</span><span>${esc(f.category||'')}</span><span>${esc(notifTime(e.at))}</span><span>By: ${esc(e.by||'Team')}</span></div></div>`;}).join(''):`<div class="empty" style="padding:16px">No failure status updates in this period yet.</div>`}</div>
+  </div>`;
+  $('#overlay').classList.add('open');$('#sheet').classList.add('open');$('#shClose').onclick=closeSheet;
+}
+
 function openWeeklyDoneSheet(startMs,endMs){
   const start=new Date(startMs),end=new Date(endMs);
   const sum=weeklyTaskWorkDoneSummary(start,end);
@@ -2006,6 +2247,14 @@ function renderWeekly(){
   const doneThisWeek=weekWork.total;
   let html=`<div class="banner"><h3>WEEKLY UPDATE</h3><p>Automatic team log from <b>Sunday to Saturday</b>. It now includes task-stage completion for Embedded, Software, Mechanical, Electrical, and Test.</p></div>`;
   html+=`<div class="week-nav"><button id="wkPrev">◀ PREVIOUS WEEK</button><button id="wkThis">THIS WEEK</button><button id="wkNext">NEXT WEEK ▶</button></div>`;
+  html+=`<div class="week-card"><div class="week-head"><h3>FAILURE PROGRESS NOW</h3><span class="week-range">Live snapshot above week summary</span></div>
+    <div class="banner" style="margin-bottom:12px"><h3>CURRENT FAILURE SNAPSHOT</h3><p>This is the live status of all failures now. The curves below show how failure status changes progress over weeks and months.</p></div>
+    <div class="statgrid" style="margin-bottom:0">
+      <div class="scard green"><div class="big">${failures.filter(f=>f.status==='DONE').length}</div><div class="lbl">Done</div></div>
+      <div class="scard amber"><div class="big">${failures.filter(f=>f.status==='IN-PROGRESS').length}</div><div class="lbl">In progress</div></div>
+      <div class="scard blue"><div class="big">${failures.filter(f=>f.status==='DEFINED').length}</div><div class="lbl">Defined</div></div>
+      <div class="scard grey"><div class="big">${failures.filter(f=>f.status==='NOT YET STARTED').length}</div><div class="lbl">Not started</div></div>
+    </div></div>`;
   html+=`<div class="week-card"><div class="week-head"><h3>WEEK SUMMARY</h3><span class="week-range">${esc(fmtDate(start))} → ${esc(fmtDate(end))}</span></div>
     <div class="statgrid" style="margin-bottom:0">
       <div class="scard amber"><div class="big">${items.length}</div><div class="lbl">Updates</div></div>
@@ -2017,13 +2266,11 @@ function renderWeekly(){
     <div class="week-stage-grid">${TASK_STAGE_ORDER.map(st=>stageCard(st,start,end)).join('')}</div>
     <div class="week-insights"><div class="week-insight"><b>${waitingForTest}</b><span>Waiting for test</span></div><div class="week-insight"><b>${urgentOpen}</b><span>Urgent open tasks</span></div><div class="week-insight"><b>${unassignedOpen}</b><span>Open without assignee</span></div><div class="week-insight"><b>${allTasks.filter(t=>!t.done).length}</b><span>Total open tasks</span></div></div>
   </div>`;
-  html+=`<div class="week-card"><div class="week-head"><h3>FAILURE PROGRESS NOW</h3><span class="week-range">Current status</span></div>
-    <div class="statgrid" style="margin-bottom:0">
-      <div class="scard green"><div class="big">${failures.filter(f=>f.status==='DONE').length}</div><div class="lbl">Done</div></div>
-      <div class="scard amber"><div class="big">${failures.filter(f=>f.status==='IN-PROGRESS').length}</div><div class="lbl">In progress</div></div>
-      <div class="scard blue"><div class="big">${failures.filter(f=>f.status==='DEFINED').length}</div><div class="lbl">Defined</div></div>
-      <div class="scard grey"><div class="big">${failures.filter(f=>f.status==='NOT YET STARTED').length}</div><div class="lbl">Not started</div></div>
-    </div></div>`;
+  const curveYear=(new Date()).getFullYear();
+  html+=renderProgressCurveCard('weekly',curveYear);
+  html+=renderProgressCurveCard('monthly',curveYear);
+  html+=renderFailureProgressCurveCard('weekly',curveYear);
+  html+=renderFailureProgressCurveCard('monthly',curveYear);
   html+=`<div class="week-card"><div class="week-head"><h3>CHANGE LOG</h3><span class="week-range">${items.length} item(s)</span></div>`;
   if(!items.length){html+=`<div class="empty" style="padding:25px 10px">No updates recorded for this week yet.</div>`;}
   else html+=`<div class="timeline">${items.map(n=>`<div class="tline ${esc(n.type||'update')}"><div class="tl-title">${esc(n.title||'Update')}</div><div class="tl-msg">${esc(n.message||'')}</div><div class="tl-meta">${esc(n.by||'Team')} • ${notifTime(n.at)}</div></div>`).join('')}</div>`;
@@ -2033,6 +2280,8 @@ function renderWeekly(){
   $('#wkThis').onclick=()=>{lsSave('viper_week_offset',0);renderWeekly();};
   $('#wkNext').onclick=()=>{lsSave('viper_week_offset',offset+1);renderWeekly();};
   main.querySelectorAll('[data-wstage]').forEach(c=>c.onclick=()=>openWeeklyStageSheet(c.dataset.wstage,start.getTime(),end.getTime()));
+  main.querySelectorAll('[data-prog-period]').forEach(c=>c.onclick=()=>{const [mode,index,year]=c.dataset.progPeriod.split('|');openProgressPeriodSheet(mode,index,year);});
+  main.querySelectorAll('[data-fail-prog-period]').forEach(c=>c.onclick=()=>{const [mode,index,year]=c.dataset.failProgPeriod.split('|');openFailureProgressPeriodSheet(mode,index,year);});
   const wkDoneCard=$('#wkDoneTotal');
   if(wkDoneCard)wkDoneCard.onclick=()=>openWeeklyDoneSheet(start.getTime(),end.getTime());
   $('#wkCopy').onclick=async()=>{
