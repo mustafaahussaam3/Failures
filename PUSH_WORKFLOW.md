@@ -10,11 +10,12 @@ After every push to `main`, verify that GitHub Pages is serving the same `index.
    node scripts/check-live-site.mjs
    ```
 
-4. The check must show `OK: live site is serving define-safe-2026-07-14-04`.
+4. The check must show `OK: live site is serving task-search-2026-07-14-05`.
 5. If the live site is stale, push a tiny rebuild trigger such as touching `.nojekyll`, then run the check again.
 
 The check verifies both:
 
 - the visible build marker is on the live website
 - the communication cards contain `SAVE ID / COMMENT`
+
 
