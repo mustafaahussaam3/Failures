@@ -1,4 +1,4 @@
-const build = process.env.EXPECT_BUILD || "comm-edit-restore-2026-07-14-03";
+﻿const build = process.env.EXPECT_BUILD || "define-safe-2026-07-14-04";
 const cacheBust = Date.now();
 const repoApiUrl = "https://api.github.com/repos/mustafaahussaam3/Failures/contents/index.html?ref=main";
 const liveUrl = `https://mustafaahussaam3.github.io/Failures/?v=${cacheBust}`;
@@ -61,3 +61,4 @@ assertContains("live GitHub Pages site", live, build);
 assertContains("live GitHub Pages site", live, "SAVE ID / COMMENT");
 
 console.log(`OK: live site is serving ${build}`);
+
