@@ -4,7 +4,7 @@ const repoApiUrl = "https://api.github.com/repos/mustafaahussaam3/Failures/conte
 const liveUrl = `https://mustafaahussaam3.github.io/Failures/?v=${cacheBust}`;
 
 async function read(url) {
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetchWithRetry(url, { cache: "no-store" });
   const text = await response.text();
   return {
     ok: response.ok,
@@ -15,7 +15,7 @@ async function read(url) {
   };
 }
 async function readGitHubIndex() {
-  const response = await fetch(repoApiUrl, {
+  const response = await fetchWithRetry(repoApiUrl, {
     cache: "no-store",
     headers: { "User-Agent": "Failures-live-check", Accept: "application/vnd.github+json" },
   });
@@ -28,6 +28,19 @@ async function readGitHubIndex() {
     length: text.length,
     text,
   };
+}
+async function fetchWithRetry(url, options, attempts = 4) {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await fetch(url, options);
+    } catch (error) {
+      lastError = error;
+      console.log(`fetch retry ${attempt}/${attempts}: ${url}`);
+      await new Promise(resolve => setTimeout(resolve, attempt * 1500));
+    }
+  }
+  throw lastError;
 }
 
 function assertContains(label, page, needle) {
