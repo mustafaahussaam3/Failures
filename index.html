@@ -1243,6 +1243,43 @@ function defineLinesForTask(t){
   const cid=parseInt(t.correctiveCanId,10)||0;
   return {name,lines:[`#define ${name}_FAILURE${' '.repeat(Math.max(1,48-(name.length+8)))}${fid}`,`#define ${name}_CORRECTIVE${' '.repeat(Math.max(1,45-(name.length+11)))}${cid}`]};
 }
+function defineNameFromLine(line){
+  const m=String(line||'').match(/^\s*#define\s+([A-Z0-9_]+)/);
+  return m?m[1]:'';
+}
+function defineIdFromLine(line){
+  const m=String(line||'').match(/^\s*#define\s+[A-Z0-9_]+\s+\(?\s*(\d+)\s*\)?/);
+  return m?parseInt(m[1],10):NaN;
+}
+function insertDefineLineSorted(text,line){
+  text=String(text||'');
+  const newName=defineNameFromLine(line);
+  const newId=defineIdFromLine(line);
+  const lines=text.split('\n');
+  const existing=lines.findIndex(l=>defineNameFromLine(l)===newName);
+  if(existing>=0){
+    lines[existing]=line;
+    return lines.join('\n');
+  }
+  let endif=lines.findIndex(l=>/^\s*#endif\b/.test(l));
+  if(endif<0){lines.push('#endif');endif=lines.length-1;}
+  if(isNaN(newId)){
+    lines.splice(endif,0,line);
+    return lines.join('\n');
+  }
+  let insertAt=endif;
+  for(let i=0;i<endif;i++){
+    const id=defineIdFromLine(lines[i]);
+    if(isNaN(id))continue;
+    if(id<=newId)insertAt=i+1;
+    else{insertAt=i;break;}
+  }
+  lines.splice(insertAt,0,line);
+  return lines.join('\n').replace(/\n{3,}/g,'\n\n');
+}
+function upsertDefineLinesSorted(text,lines){
+  return lines.reduce((acc,line)=>insertDefineLineSorted(acc,line),text);
+}
 async function upsertDefineForTask(t){
   if(!taskCanHaveFailureIds(t)||!t.defineName||!t.failureCanId||!t.correctiveCanId)return;
   let text=defineText||DEFAULT_DEFINE||'';
@@ -1250,10 +1287,10 @@ async function upsertDefineForTask(t){
   function upsertLine(suffix,line){
     const re=new RegExp(`^\\s*#define\\s+${name}_${suffix}\\s+.*$`,'m');
     if(re.test(text))text=text.replace(re,line);
-    else text=text.replace(/\n#endif\s*$/,'')+`\n${line}\n#endif`;
   }
   upsertLine('FAILURE',lines[0]);
   upsertLine('CORRECTIVE',lines[1]);
+  text=upsertDefineLinesSorted(text,lines);
   await saveDefine(text);
 }
 function taskProgressState(patch,t){
@@ -2046,14 +2083,8 @@ async function upsertDefineForCommunication(c){
   c=normalizeCommunicationId(c);
   if(!c.name||!c.communicationId)return;
   let text=defineText||DEFAULT_DEFINE||'';
-  const {name,line}=defineLineForCommunication(c);
-  if(!/\/\/\s*communication\s*id/i.test(text)){
-    text=text.replace(/\n#endif\s*$/,'\n\n//communication ID\'s\n#endif');
-  }
-  const re=new RegExp(`^\\s*#define\\s+${name}_COMMUNICATION_ID\\s+.*$`,'m');
-  if(re.test(text))text=text.replace(re,line);
-  else text=text.replace(/\n#endif\s*$/,
-    `\n${line}\n#endif`);
+  const {line}=defineLineForCommunication(c);
+  text=insertDefineLineSorted(text,line);
   await saveDefine(text);
 }
 async function removeCommunicationDefine(c){
@@ -2069,13 +2100,22 @@ async function saveCommunicationIds(items){
   if(useLocal){persistLocal();render();}
   else{try{await setDoc(doc(metaCol,'communicationIds'),{items:communicationIds,updatedBy:myName||'Team',updatedAt:Date.now()});}catch(e){console.error(e);toast('Communication IDs save failed');}}
 }
+function duplicateCommunicationDefineName(defineName,ignoreId=''){
+  const key=String(defineName||'').toUpperCase();
+  return communicationIds.some(c=>c.id!==ignoreId&&String(c.defineName||'').toUpperCase()===key);
+}
+function duplicateCommunicationId(value,ignoreId=''){
+  const id=parseInt(value,10);
+  if(isNaN(id))return false;
+  return communicationIds.some(c=>c.id!==ignoreId&&parseInt(c.communicationId,10)===id);
+}
 async function addCommunicationIdFromForm(){
   if(!myName){promptName();return;}
   const name=$('#commIdName').value.trim();
   if(!name){toast('Enter communication name');return;}
   const manual=parseInt($('#commIdValue').value,10);
   const defineName=makeCommunicationDefineName(name);
-  if(communicationIds.some(c=>String(c.defineName||'').toUpperCase()===defineName)){toast('Communication define name already exists');return;}
+  if(duplicateCommunicationDefineName(defineName)){toast('Communication define name already exists');return;}
   if(manual && usedCanIds().has(manual)){toast('This ID is already used in DEFINE');return;}
   const item=normalizeCommunicationId({
     id:'comm_'+Date.now()+Math.random().toString(36).slice(2,6),
@@ -2089,6 +2129,42 @@ async function addCommunicationIdFromForm(){
   await saveCommunicationIds([...communicationIds,item]);
   await addNotification('Communication ID added',`${item.defineName}_COMMUNICATION_ID = ${item.communicationId}`,'define');
   toast('Communication ID added to DEFINE ✓');
+}
+function openCommunicationIdSheet(id){
+  const item=communicationIds.find(x=>x.id===id);if(!item)return;
+  const c=normalizeCommunicationId(item);
+  $('#sheetContent').innerHTML=`<div class="sh-head"><div class="top"><span class="cid">COMM ID</span><h2>${esc(c.name)}</h2><button class="sh-close" id="shClose">âœ•</button></div></div><div class="sh-body">
+    <div class="field"><label>Communication name</label><input class="fin" id="commEditName" value="${esc(c.name)}"></div>
+    <div class="ctrlgrid"><div class="ctrl"><label>DEFINE name</label><input class="fin" id="commEditDefine" value="${esc(c.defineName)}"></div><div class="ctrl"><label>CAN ID</label><input class="fin" id="commEditId" type="number" value="${esc(c.communicationId)}"></div></div>
+    <div class="field"><label>Notes / purpose / direction</label><textarea class="fin" id="commEditNotes">${esc(c.notes||'')}</textarea></div>
+    <div class="cfgnote">Saving updates DEFINE in-place, then re-sorts the line by numeric ID. Example: ID 660 is placed after 659, not at the bottom.</div>
+    <div class="task-can"><span id="commEditPreview">${esc(defineLineForCommunication(c).line)}</span></div>
+    <div class="sh-actions"><button class="btn btn-cancel" id="commEditCancel">CANCEL</button><button class="btn btn-save" id="commEditSave">SAVE COMM ID</button><button class="btn btn-del" id="commEditDelete">âœ•</button></div></div>`;
+  $('#overlay').classList.add('open');$('#sheet').classList.add('open');
+  $('#shClose').onclick=$('#commEditCancel').onclick=closeSheet;
+  const preview=()=>{
+    const temp=normalizeCommunicationId(Object.assign({},c,{name:$('#commEditName').value,defineName:$('#commEditDefine').value,communicationId:$('#commEditId').value,notes:$('#commEditNotes').value}));
+    $('#commEditPreview').textContent=defineLineForCommunication(temp).line;
+  };
+  ['commEditName','commEditDefine','commEditId','commEditNotes'].forEach(i=>$('#'+i).addEventListener('input',preview));
+  $('#commEditSave').onclick=async()=>{
+    if(!myName){promptName();return;}
+    const next=normalizeCommunicationId(Object.assign({},c,{
+      name:$('#commEditName').value.trim()||c.name,
+      defineName:($('#commEditDefine').value.trim()||makeCommunicationDefineName($('#commEditName').value)).toUpperCase().replace(/[^A-Z0-9_]+/g,'_').replace(/^_+|_+$/g,''),
+      communicationId:parseInt($('#commEditId').value,10)||c.communicationId,
+      notes:$('#commEditNotes').value,
+      updatedBy:myName,updatedAt:Date.now()
+    }));
+    if(duplicateCommunicationDefineName(next.defineName,c.id)){toast('Communication define name already exists');return;}
+    if(duplicateCommunicationId(next.communicationId,c.id)){toast('Communication ID already exists');return;}
+    await removeCommunicationDefine(c);
+    await upsertDefineForCommunication(next);
+    await saveCommunicationIds(communicationIds.map(x=>x.id===c.id?next:x));
+    await addNotification('Communication ID updated',`${next.defineName}_COMMUNICATION_ID = ${next.communicationId}`,'define');
+    closeSheet();toast('Communication ID saved âœ“');
+  };
+  $('#commEditDelete').onclick=async()=>{closeSheet();await deleteCommunicationId(c.id);};
 }
 async function deleteCommunicationId(id){
   const item=communicationIds.find(x=>x.id===id);if(!item)return;
@@ -2107,12 +2183,13 @@ function renderCommunicationIds(){
   </div>`;
   html+=`<div class="taskcol"><h3>COMMUNICATION DEFINES <span class="n">${rows.length}</span></h3>`;
   if(!rows.length)html+=`<div class="empty" style="padding:20px">No communication IDs yet.</div>`;
-  rows.forEach(c=>{const line=defineLineForCommunication(c).line;html+=`<div class="need-card"><div class="need-top"><div class="need-body"><div class="need-title">${esc(c.name)}</div><div class="need-meta"><span class="need-pill">ID ${esc(c.communicationId)}</span><span class="need-pill">${esc(c.defineName)}_COMMUNICATION_ID</span><span class="need-pill">By: ${esc(c.by||'Team')}</span></div>${c.notes?`<div class="need-notes">${esc(c.notes)}</div>`:''}<div class="task-can"><span>${esc(line)}</span></div></div><button class="tdel" data-delcommid="${esc(c.id)}">✕</button></div></div>`;});
+  rows.forEach(c=>{const line=defineLineForCommunication(c).line;html+=`<div class="need-card" data-opencommid="${esc(c.id)}"><div class="need-top"><div class="need-body"><div class="need-title">${esc(c.name)}</div><div class="need-meta"><span class="need-pill">ID ${esc(c.communicationId)}</span><span class="need-pill">${esc(c.defineName)}_COMMUNICATION_ID</span><span class="need-pill">By: ${esc(c.by||'Team')}</span></div>${c.notes?`<div class="need-notes">${esc(c.notes)}</div>`:''}<div class="task-can"><span>${esc(line)}</span></div></div><button class="tdel" data-delcommid="${esc(c.id)}">✕</button></div></div>`;});
   html+=`</div>`;
   main.innerHTML=html;
   $('#commIdAdd').onclick=addCommunicationIdFromForm;
   $('#commIdName').addEventListener('keydown',e=>{if(e.key==='Enter')$('#commIdAdd').click();});
-  main.querySelectorAll('[data-delcommid]').forEach(b=>b.onclick=()=>deleteCommunicationId(b.dataset.delcommid));
+  main.querySelectorAll('[data-opencommid]').forEach(c=>c.onclick=()=>openCommunicationIdSheet(c.dataset.opencommid));
+  main.querySelectorAll('[data-delcommid]').forEach(b=>b.onclick=e=>{e.stopPropagation();deleteCommunicationId(b.dataset.delcommid);});
 }
 
 /* ---------- COMMUNITY VIEW ---------- */
