@@ -1,10 +1,26 @@
 const build = process.env.EXPECT_BUILD || "comm-edit-restore-2026-07-14-03";
-const rawUrl = "https://raw.githubusercontent.com/mustafaahussaam3/Failures/main/index.html";
-const liveUrl = `https://mustafaahussaam3.github.io/Failures/?v=${Date.now()}`;
+const cacheBust = Date.now();
+const repoApiUrl = "https://api.github.com/repos/mustafaahussaam3/Failures/contents/index.html?ref=main";
+const liveUrl = `https://mustafaahussaam3.github.io/Failures/?v=${cacheBust}`;
 
 async function read(url) {
   const response = await fetch(url, { cache: "no-store" });
   const text = await response.text();
+  return {
+    ok: response.ok,
+    status: response.status,
+    etag: response.headers.get("etag") || "",
+    length: text.length,
+    text,
+  };
+}
+async function readGitHubIndex() {
+  const response = await fetch(repoApiUrl, {
+    cache: "no-store",
+    headers: { "User-Agent": "Failures-live-check", Accept: "application/vnd.github+json" },
+  });
+  const json = await response.json();
+  const text = Buffer.from(json.content || "", "base64").toString("utf8");
   return {
     ok: response.ok,
     status: response.status,
@@ -20,7 +36,7 @@ function assertContains(label, page, needle) {
   }
 }
 
-const raw = await read(rawUrl);
+const raw = await readGitHubIndex();
 const live = await read(liveUrl);
 
 console.log(`RAW  status=${raw.status} length=${raw.length} etag=${raw.etag}`);
