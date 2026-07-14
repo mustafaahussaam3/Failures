@@ -2062,11 +2062,15 @@ function normalizeCommunicationId(c){
   const name=String(c.name||c.title||'Communication').trim()||'Communication';
   const defineName=(c.defineName||makeCommunicationDefineName(name));
   const communicationId=parseInt(c.communicationId||c.canId||c.idValue,10)||0;
-  return {id:c.id||('comm_'+Date.now()+Math.random().toString(36).slice(2,6)),name,defineName,communicationId,notes:c.notes||'',by:c.by||'',at:c.at||Date.now(),updatedBy:c.updatedBy||'',updatedAt:c.updatedAt||null};
+  const defineComment=cleanDefineComment(c.defineComment||c.comment||'');
+  return {id:c.id||('comm_'+Date.now()+Math.random().toString(36).slice(2,6)),name,defineName,communicationId,defineComment,notes:c.notes||'',by:c.by||'',at:c.at||Date.now(),updatedBy:c.updatedBy||'',updatedAt:c.updatedAt||null};
 }
 function makeCommunicationDefineName(name){
   const raw=String(name||'COMMUNICATION').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
   return (raw||'COMMUNICATION').slice(0,48);
+}
+function cleanDefineComment(value){
+  return String(value||'').replace(/[\r\n]+/g,' ').replace(/\*\//g,'').trim();
 }
 function nextCommunicationId(){
   const used=usedCanIds();
@@ -2077,7 +2081,8 @@ function nextCommunicationId(){
 function defineLineForCommunication(c){
   const name=(c.defineName||makeCommunicationDefineName(c.name)).toUpperCase().replace(/[^A-Z0-9_]+/g,'_').replace(/^_+|_+$/g,'')||'COMMUNICATION';
   const id=parseInt(c.communicationId,10)||0;
-  return {name,line:`#define ${name}_COMMUNICATION_ID${' '.repeat(Math.max(1,45-(name.length+17)))}${id}`};
+  const comment=cleanDefineComment(c.defineComment||c.comment||'');
+  return {name,line:`#define ${name}_COMMUNICATION_ID${' '.repeat(Math.max(1,45-(name.length+17)))}${id}${comment?` // ${comment}`:''}`};
 }
 async function upsertDefineForCommunication(c){
   c=normalizeCommunicationId(c);
@@ -2122,6 +2127,7 @@ async function addCommunicationIdFromForm(){
     name,
     defineName,
     communicationId:manual||nextCommunicationId(),
+    defineComment:$('#commIdComment').value.trim(),
     notes:$('#commIdNotes').value.trim(),
     by:myName||'Team member',at:Date.now()
   });
@@ -2136,6 +2142,7 @@ function openCommunicationIdSheet(id){
   $('#sheetContent').innerHTML=`<div class="sh-head"><div class="top"><span class="cid">COMM ID</span><h2>${esc(c.name)}</h2><button class="sh-close" id="shClose">âœ•</button></div></div><div class="sh-body">
     <div class="field"><label>Communication name</label><input class="fin" id="commEditName" value="${esc(c.name)}"></div>
     <div class="ctrlgrid"><div class="ctrl"><label>DEFINE name</label><input class="fin" id="commEditDefine" value="${esc(c.defineName)}"></div><div class="ctrl"><label>CAN ID</label><input class="fin" id="commEditId" type="number" value="${esc(c.communicationId)}"></div></div>
+    <div class="field"><label>DEFINE comment</label><input class="fin" id="commEditComment" value="${esc(c.defineComment||'')}" placeholder="Optional comment written after // in define.h"></div>
     <div class="field"><label>Notes / purpose / direction</label><textarea class="fin" id="commEditNotes">${esc(c.notes||'')}</textarea></div>
     <div class="cfgnote">Saving updates DEFINE in-place, then re-sorts the line by numeric ID. Example: ID 660 is placed after 659, not at the bottom.</div>
     <div class="task-can"><span id="commEditPreview">${esc(defineLineForCommunication(c).line)}</span></div>
@@ -2143,16 +2150,17 @@ function openCommunicationIdSheet(id){
   $('#overlay').classList.add('open');$('#sheet').classList.add('open');
   $('#shClose').onclick=$('#commEditCancel').onclick=closeSheet;
   const preview=()=>{
-    const temp=normalizeCommunicationId(Object.assign({},c,{name:$('#commEditName').value,defineName:$('#commEditDefine').value,communicationId:$('#commEditId').value,notes:$('#commEditNotes').value}));
+    const temp=normalizeCommunicationId(Object.assign({},c,{name:$('#commEditName').value,defineName:$('#commEditDefine').value,communicationId:$('#commEditId').value,defineComment:$('#commEditComment').value,notes:$('#commEditNotes').value}));
     $('#commEditPreview').textContent=defineLineForCommunication(temp).line;
   };
-  ['commEditName','commEditDefine','commEditId','commEditNotes'].forEach(i=>$('#'+i).addEventListener('input',preview));
+  ['commEditName','commEditDefine','commEditId','commEditComment','commEditNotes'].forEach(i=>$('#'+i).addEventListener('input',preview));
   $('#commEditSave').onclick=async()=>{
     if(!myName){promptName();return;}
     const next=normalizeCommunicationId(Object.assign({},c,{
       name:$('#commEditName').value.trim()||c.name,
       defineName:($('#commEditDefine').value.trim()||makeCommunicationDefineName($('#commEditName').value)).toUpperCase().replace(/[^A-Z0-9_]+/g,'_').replace(/^_+|_+$/g,''),
       communicationId:parseInt($('#commEditId').value,10)||c.communicationId,
+      defineComment:$('#commEditComment').value,
       notes:$('#commEditNotes').value,
       updatedBy:myName,updatedAt:Date.now()
     }));
@@ -2174,7 +2182,7 @@ function readCommunicationRow(id,base){
   const name=row.querySelector('[data-commfield="name"]').value.trim()||base.name;
   const defineName=(row.querySelector('[data-commfield="define"]').value.trim()||makeCommunicationDefineName(name)).toUpperCase().replace(/[^A-Z0-9_]+/g,'_').replace(/^_+|_+$/g,'');
   const communicationId=parseInt(row.querySelector('[data-commfield="id"]').value,10)||0;
-  return normalizeCommunicationId(Object.assign({},base,{name,defineName,communicationId,notes:row.querySelector('[data-commfield="notes"]').value,updatedBy:myName,updatedAt:Date.now()}));
+  return normalizeCommunicationId(Object.assign({},base,{name,defineName,communicationId,defineComment:row.querySelector('[data-commfield="comment"]').value,notes:row.querySelector('[data-commfield="notes"]').value,updatedBy:myName,updatedAt:Date.now()}));
 }
 function refreshCommunicationRowPreview(id){
   const base=communicationIds.find(x=>x.id===id);if(!base)return;
@@ -2208,6 +2216,7 @@ function renderCommunicationIds(){
   let html=`<div class="banner"><h3>COMMUNICATION IDS</h3><p>Add communication/control message IDs here. Every item is written to DEFINE as <b>NAME_COMMUNICATION_ID</b>.</p></div>`;
   html+=`<div class="week-card" style="margin-bottom:14px">
     <div class="add-row"><input class="fin" id="commIdName" placeholder="Communication name, e.g. DED Bingo Message"><input class="fin" id="commIdValue" type="number" placeholder="Auto ID: ${nextCommunicationId()}" style="flex:0 0 128px"></div>
+    <input class="fin" id="commIdComment" placeholder="DEFINE comment, e.g. sent from failures board to PFLD" style="margin-bottom:10px">
     <textarea class="fin" id="commIdNotes" placeholder="Notes / purpose / message direction…" style="min-height:80px;margin-bottom:10px"></textarea>
     <button class="btn btn-save" id="commIdAdd" style="width:100%">+ ADD COMMUNICATION ID TO DEFINE</button>
   </div>`;
@@ -2217,6 +2226,7 @@ function renderCommunicationIds(){
     <div class="need-top"><div class="need-body">
       <div class="ctrlgrid"><div class="ctrl"><label>Communication name</label><input class="fin" data-commfield="name" value="${esc(c.name)}"></div><div class="ctrl"><label>CAN ID</label><input class="fin" data-commfield="id" type="number" value="${esc(c.communicationId)}"></div></div>
       <div class="field"><label>DEFINE name</label><input class="fin" data-commfield="define" value="${esc(c.defineName)}"></div>
+      <div class="field"><label>DEFINE comment</label><input class="fin" data-commfield="comment" value="${esc(c.defineComment||'')}" placeholder="Optional comment written after // in define.h"></div>
       <div class="field"><label>Notes / purpose / direction</label><textarea class="fin" data-commfield="notes" style="min-height:62px">${esc(c.notes||'')}</textarea></div>
       <div class="need-meta"><span class="need-pill">By: ${esc(c.by||'Team')}</span>${c.updatedBy?`<span class="need-pill">Updated: ${esc(c.updatedBy)}</span>`:''}</div>
       <div class="task-can"><span data-commpreview>${esc(line)}</span></div>
