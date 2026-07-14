@@ -2166,6 +2166,36 @@ function openCommunicationIdSheet(id){
   };
   $('#commEditDelete').onclick=async()=>{closeSheet();await deleteCommunicationId(c.id);};
 }
+function communicationRow(id){
+  return [...main.querySelectorAll('[data-commrow]')].find(el=>el.dataset.commrow===id);
+}
+function readCommunicationRow(id,base){
+  const row=communicationRow(id);if(!row)return null;
+  const name=row.querySelector('[data-commfield="name"]').value.trim()||base.name;
+  const defineName=(row.querySelector('[data-commfield="define"]').value.trim()||makeCommunicationDefineName(name)).toUpperCase().replace(/[^A-Z0-9_]+/g,'_').replace(/^_+|_+$/g,'');
+  const communicationId=parseInt(row.querySelector('[data-commfield="id"]').value,10)||0;
+  return normalizeCommunicationId(Object.assign({},base,{name,defineName,communicationId,notes:row.querySelector('[data-commfield="notes"]').value,updatedBy:myName,updatedAt:Date.now()}));
+}
+function refreshCommunicationRowPreview(id){
+  const base=communicationIds.find(x=>x.id===id);if(!base)return;
+  const row=communicationRow(id);if(!row)return;
+  const next=readCommunicationRow(id,normalizeCommunicationId(base));if(!next)return;
+  const preview=row.querySelector('[data-commpreview]');if(preview)preview.textContent=defineLineForCommunication(next).line;
+}
+async function saveCommunicationIdInline(id){
+  if(!myName){promptName();return;}
+  const oldItem=communicationIds.find(x=>x.id===id);if(!oldItem)return;
+  const oldValue=normalizeCommunicationId(oldItem);
+  const next=readCommunicationRow(id,oldValue);if(!next)return;
+  if(!next.communicationId){toast('Enter valid communication ID');return;}
+  if(duplicateCommunicationDefineName(next.defineName,id)){toast('Communication define name already exists');return;}
+  if(duplicateCommunicationId(next.communicationId,id)){toast('Communication ID already exists');return;}
+  await removeCommunicationDefine(oldValue);
+  await upsertDefineForCommunication(next);
+  await saveCommunicationIds(communicationIds.map(x=>x.id===id?next:x));
+  await addNotification('Communication ID updated',`${next.defineName}_COMMUNICATION_ID = ${next.communicationId}`,'define');
+  toast('Communication ID saved');
+}
 async function deleteCommunicationId(id){
   const item=communicationIds.find(x=>x.id===id);if(!item)return;
   if(!confirm('Delete this communication ID from the page and DEFINE?'))return;
@@ -2183,12 +2213,22 @@ function renderCommunicationIds(){
   </div>`;
   html+=`<div class="taskcol"><h3>COMMUNICATION DEFINES <span class="n">${rows.length}</span></h3>`;
   if(!rows.length)html+=`<div class="empty" style="padding:20px">No communication IDs yet.</div>`;
-  rows.forEach(c=>{const line=defineLineForCommunication(c).line;html+=`<div class="need-card" data-opencommid="${esc(c.id)}"><div class="need-top"><div class="need-body"><div class="need-title">${esc(c.name)}</div><div class="need-meta"><span class="need-pill">ID ${esc(c.communicationId)}</span><span class="need-pill">${esc(c.defineName)}_COMMUNICATION_ID</span><span class="need-pill">By: ${esc(c.by||'Team')}</span></div>${c.notes?`<div class="need-notes">${esc(c.notes)}</div>`:''}<div class="task-can"><span>${esc(line)}</span></div></div><button class="tdel" data-delcommid="${esc(c.id)}">✕</button></div></div>`;});
+  rows.forEach(c=>{const line=defineLineForCommunication(c).line;html+=`<div class="need-card" data-commrow="${esc(c.id)}">
+    <div class="need-top"><div class="need-body">
+      <div class="ctrlgrid"><div class="ctrl"><label>Communication name</label><input class="fin" data-commfield="name" value="${esc(c.name)}"></div><div class="ctrl"><label>CAN ID</label><input class="fin" data-commfield="id" type="number" value="${esc(c.communicationId)}"></div></div>
+      <div class="field"><label>DEFINE name</label><input class="fin" data-commfield="define" value="${esc(c.defineName)}"></div>
+      <div class="field"><label>Notes / purpose / direction</label><textarea class="fin" data-commfield="notes" style="min-height:62px">${esc(c.notes||'')}</textarea></div>
+      <div class="need-meta"><span class="need-pill">By: ${esc(c.by||'Team')}</span>${c.updatedBy?`<span class="need-pill">Updated: ${esc(c.updatedBy)}</span>`:''}</div>
+      <div class="task-can"><span data-commpreview>${esc(line)}</span></div>
+      <div class="sh-actions" style="margin-top:10px"><button class="btn btn-save" data-savecommid="${esc(c.id)}">SAVE ID</button><button class="btn btn-edit" data-editcommid="${esc(c.id)}">OPEN SHEET</button></div>
+    </div><button class="tdel" data-delcommid="${esc(c.id)}">DELETE</button></div></div>`;});
   html+=`</div>`;
   main.innerHTML=html;
   $('#commIdAdd').onclick=addCommunicationIdFromForm;
   $('#commIdName').addEventListener('keydown',e=>{if(e.key==='Enter')$('#commIdAdd').click();});
-  main.querySelectorAll('[data-opencommid]').forEach(c=>c.onclick=()=>openCommunicationIdSheet(c.dataset.opencommid));
+  main.querySelectorAll('[data-commrow]').forEach(row=>row.querySelectorAll('input,textarea').forEach(el=>el.addEventListener('input',()=>refreshCommunicationRowPreview(row.dataset.commrow))));
+  main.querySelectorAll('[data-savecommid]').forEach(b=>b.onclick=e=>{e.stopPropagation();saveCommunicationIdInline(b.dataset.savecommid);});
+  main.querySelectorAll('[data-editcommid]').forEach(b=>b.onclick=e=>{e.stopPropagation();openCommunicationIdSheet(b.dataset.editcommid);});
   main.querySelectorAll('[data-delcommid]').forEach(b=>b.onclick=e=>{e.stopPropagation();deleteCommunicationId(b.dataset.delcommid);});
 }
 
